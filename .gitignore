@@ -1,0 +1,59 @@
+# Keil MDK build outputs
+*.o
+*.d
+*.crf
+*.htm
+*.dep
+*.lst
+*.map
+*.axf
+*.hex
+*.bin
+*.elf
+*.lnp
+*.sct
+*.uvguix.*
+*.scvd
+RTE/
+Listings/
+Objects/
+
+# CubeMX generated startup
+**/startup_stm32f103xb.s
+
+# FreeRTOS - only keep kernel source (portable + include)
+Code/FreeRTOSv202411.00/FreeRTOS/Demo/
+Code/FreeRTOSv202411.00/FreeRTOS-Plus/
+Code/FreeRTOSv202411.00/FreeRTOS/Test/
+Code/FreeRTOSv202411.00/*.url
+Code/FreeRTOSv202411.00/*.txt
+Code/FreeRTOSv202411.00/.editorconfig
+
+# Large binary files
+*.pdf
+*.doc
+*.docx
+*.rar
+*.xlsx
+*.doc
+
+# Temp files
+~$*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Backup folders
+Code/STM32_SmartFarm_v*/
+
+# CubeMX screenshot folder
+CubeMX引脚配置/
+
+# Claude Code
+.claude/
