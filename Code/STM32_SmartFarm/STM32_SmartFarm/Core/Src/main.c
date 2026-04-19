@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -26,6 +27,7 @@
 #include <stdio.h>
 #include "sensor_dht22.h"
 #include "sensor_ds18b20.h"
+#include "sensor_fc28.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -90,11 +92,13 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   DHT22_Init();
   DS18B20_Init();
+  FC28_Init();
   printf("System Init OK!\r\n");
-  printf("DHT22 Test Start\r\n");
+  printf("FC28 Test Start\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -104,22 +108,18 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    DHT22_Data_t dhtData;
+    FC28_Data_t fcData;
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 
-    uint8_t retry = 0;
-    for (retry = 0; retry < 3; retry++)
+    if (FC28_Read(&fcData) == HAL_OK)
     {
-        if (DHT22_Read(&dhtData) == HAL_OK)
-        {
-            printf("DHT22: T=%.1fC  H=%.1f%%\r\n", dhtData.temperature, dhtData.humidity);
-            break;
-        }
-        HAL_Delay(100);
+        printf("FC28: ADC=%d  Moisture=%d%%\r\n", fcData.adc_value, fcData.moisture);
     }
-    if (retry >= 3)
-        printf("DHT22: Read Error!\r\n");
-    HAL_Delay(2000);
+    else
+    {
+        printf("FC28: Read Error!\r\n");
+    }
+    HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
@@ -132,6 +132,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -158,6 +159,12 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+  PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
