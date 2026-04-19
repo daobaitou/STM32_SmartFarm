@@ -18,11 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include "sensor_dht22.h"
+#include "sensor_ds18b20.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -86,8 +89,12 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  DHT22_Init();
+  DS18B20_Init();
+  printf("System Init OK!\r\n");
+  printf("DHT22 Test Start\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -97,10 +104,22 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);  // LED亮
-    HAL_Delay(500);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);    // LED灭
-    HAL_Delay(500);
+    DHT22_Data_t dhtData;
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+
+    uint8_t retry = 0;
+    for (retry = 0; retry < 3; retry++)
+    {
+        if (DHT22_Read(&dhtData) == HAL_OK)
+        {
+            printf("DHT22: T=%.1fC  H=%.1f%%\r\n", dhtData.temperature, dhtData.humidity);
+            break;
+        }
+        HAL_Delay(100);
+    }
+    if (retry >= 3)
+        printf("DHT22: Read Error!\r\n");
+    HAL_Delay(2000);
   }
   /* USER CODE END 3 */
 }
