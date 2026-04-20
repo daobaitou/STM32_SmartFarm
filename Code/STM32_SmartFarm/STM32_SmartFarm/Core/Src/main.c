@@ -30,6 +30,7 @@
 #include "sensor_fc28.h"
 #include "display_oled.h"
 #include "sensor_bh1750.h"
+#include "sensor_bmp180.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,6 +101,8 @@ int main(void)
   FC28_Init();
   OLED_Init();
   BH1750_Init();
+  HAL_StatusTypeDef bmp_ret = BMP180_Init();
+  printf("BMP180 Init: %d\r\n", bmp_ret);
   printf("System Init OK!\r\n");
   /* USER CODE END 2 */
 
@@ -111,6 +114,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    BMP180_Data_t bmp_data;
+
+    if (BMP180_Read(&bmp_data) == HAL_OK && bmp_data.valid)
+    {
+        printf("[%lu] Temp:%.1fC Press:%.1fhPa\r\n", loop_cnt, bmp_data.temperature, bmp_data.pressure);
+    }
+    else
+    {
+        printf("[%lu] BMP180 FAIL\r\n", loop_cnt);
+    }
+
     BH1750_Data_t light_data;
     char buf[20];
 
@@ -127,11 +141,14 @@ int main(void)
 
     OLED_Clear();
     OLED_DrawString(0, 0, "SmartFarm", FONT_SMALL);
-    snprintf(buf, sizeof(buf), "Loop:%lu", loop_cnt);
-    OLED_DrawString(0, 16, buf, FONT_SMALL);
+    if (bmp_data.valid)
+    {
+        snprintf(buf, sizeof(buf), "P:%.0fhPa", bmp_data.pressure);
+        OLED_DrawString(0, 16, buf, FONT_SMALL);
+    }
     if (light_data.valid)
     {
-        snprintf(buf, sizeof(buf), "Light:%.0flux", light_data.light);
+        snprintf(buf, sizeof(buf), "L:%.0flux", light_data.light);
         OLED_DrawString(0, 32, buf, FONT_SMALL);
     }
     OLED_Refresh();
