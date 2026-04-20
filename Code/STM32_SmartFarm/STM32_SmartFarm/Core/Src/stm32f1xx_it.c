@@ -22,6 +22,7 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "sensor_yfs201.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -199,5 +200,15 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /* USER CODE BEGIN 1 */
-
+/**
+  * @brief EXTI Line0 interrupt handler (PB0 - YF-S201 water flow sensor)
+  */
+void EXTI0_IRQHandler(void)
+{
+    if (__HAL_GPIO_EXTI_GET_FLAG(GPIO_PIN_0))
+    {
+        __HAL_GPIO_EXTI_CLEAR_FLAG(GPIO_PIN_0);
+        YFS201_PulseHandler();
+    }
+}
 /* USER CODE END 1 */
