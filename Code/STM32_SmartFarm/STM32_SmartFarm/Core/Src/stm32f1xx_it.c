@@ -23,6 +23,15 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "sensor_yfs201.h"
+#include "tim.h"
+#include "stm32f1xx_hal_tim.h"
+/* FreeRTOS includes */
+#include "FreeRTOS.h"
+#include "task.h"
+/* FreeRTOS port handlers (declared in port.c) */
+extern void vPortSVCHandler(void);
+extern void xPortPendSVHandler(void);
+extern void xPortSysTickHandler(void);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,7 +65,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-
+extern TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -147,6 +156,7 @@ void SVC_Handler(void)
   /* USER CODE BEGIN SVCall_IRQn 0 */
 
   /* USER CODE END SVCall_IRQn 0 */
+  vPortSVCHandler();
   /* USER CODE BEGIN SVCall_IRQn 1 */
 
   /* USER CODE END SVCall_IRQn 1 */
@@ -173,6 +183,7 @@ void PendSV_Handler(void)
   /* USER CODE BEGIN PendSV_IRQn 0 */
 
   /* USER CODE END PendSV_IRQn 0 */
+  xPortPendSVHandler();
   /* USER CODE BEGIN PendSV_IRQn 1 */
 
   /* USER CODE END PendSV_IRQn 1 */
@@ -186,7 +197,8 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
   /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
+  /* FreeRTOS接管SysTick，HAL tick改由TIM4提供 */
+  xPortSysTickHandler();
   /* USER CODE BEGIN SysTick_IRQn 1 */
 
   /* USER CODE END SysTick_IRQn 1 */
@@ -210,5 +222,13 @@ void EXTI0_IRQHandler(void)
         __HAL_GPIO_EXTI_CLEAR_FLAG(GPIO_PIN_0);
         YFS201_PulseHandler();
     }
+}
+
+/**
+  * @brief TIM4 global interrupt handler (HAL time base)
+  */
+void TIM4_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&htim4);
 }
 /* USER CODE END 1 */

@@ -27,7 +27,7 @@
 static int16_t  AC1, AC2, AC3;
 static uint16_t AC4, AC5, AC6;
 static int16_t  B1, B2;
-static int16_t  MB, MC, MD;
+static int16_t  MC, MD;
 
 static int32_t  B5; /* 温度补偿中间值 */
 
@@ -71,7 +71,6 @@ HAL_StatusTypeDef BMP180_Init(void)
     AC6 = (uint16_t)((cal[10] << 8) | cal[11]);
     B1  = read_int16(cal[12], cal[13]);
     B2  = read_int16(cal[14], cal[15]);
-    MB  = read_int16(cal[16], cal[17]);
     MC  = read_int16(cal[18], cal[19]);
     MD  = read_int16(cal[20], cal[21]);
 
