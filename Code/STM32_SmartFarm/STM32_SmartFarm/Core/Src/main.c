@@ -28,6 +28,8 @@
 #include "sensor_dht22.h"
 #include "sensor_ds18b20.h"
 #include "sensor_fc28.h"
+#include "display_oled.h"
+#include "sensor_bh1750.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +50,6 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -97,28 +98,44 @@ int main(void)
   DHT22_Init();
   DS18B20_Init();
   FC28_Init();
+  OLED_Init();
+  BH1750_Init();
   printf("System Init OK!\r\n");
-  printf("FC28 Test Start\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint32_t loop_cnt = 0;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    FC28_Data_t fcData;
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+    BH1750_Data_t light_data;
+    char buf[20];
 
-    if (FC28_Read(&fcData) == HAL_OK)
+    loop_cnt++;
+
+    if (BH1750_Read(&light_data) == HAL_OK && light_data.valid)
     {
-        printf("FC28: ADC=%d  Moisture=%d%%\r\n", fcData.adc_value, fcData.moisture);
+        printf("[%lu] Light: %.1f lx\r\n", loop_cnt, light_data.light);
     }
     else
     {
-        printf("FC28: Read Error!\r\n");
+        printf("[%lu] BH1750 FAIL\r\n", loop_cnt);
     }
+
+    OLED_Clear();
+    OLED_DrawString(0, 0, "SmartFarm", FONT_SMALL);
+    snprintf(buf, sizeof(buf), "Loop:%lu", loop_cnt);
+    OLED_DrawString(0, 16, buf, FONT_SMALL);
+    if (light_data.valid)
+    {
+        snprintf(buf, sizeof(buf), "Light:%.0flux", light_data.light);
+        OLED_DrawString(0, 32, buf, FONT_SMALL);
+    }
+    OLED_Refresh();
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
     HAL_Delay(1000);
   }
   /* USER CODE END 3 */
