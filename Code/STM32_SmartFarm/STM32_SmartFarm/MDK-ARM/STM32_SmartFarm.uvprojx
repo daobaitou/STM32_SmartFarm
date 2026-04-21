@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../App/Sensors;../App/Utils;..\App\Display;..\App\Drivers;..\Middlewares\FreeRTOS\Source\include;..\Middlewares\FreeRTOS\Source\portable\ARM_CM3;..\Core\Inc;..\App\Tasks</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../App/Sensors;../App/Utils;..\App\Display;..\App\Drivers;..\Middlewares\FreeRTOS\Source\include;..\Middlewares\FreeRTOS\Source\portable\ARM_CM3;..\Core\Inc;..\App\Tasks;..\App\Storage</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -614,6 +614,11 @@
               <FileName>soft_i2c.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\App\Drivers\soft_i2c.c</FilePath>
+            </File>
+            <File>
+              <FileName>soft_spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Drivers\soft_spi.c</FilePath>
             </File>
             <File>
               <FileName>sensor_bmp180.c</FileName>
@@ -984,6 +989,21 @@
               <FileName>app_tasks.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\App\Tasks\app_tasks.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>APP/Storage</GroupName>
+          <Files>
+            <File>
+              <FileName>w25q_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Storage\w25q_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>storage_manager.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Storage\storage_manager.c</FilePath>
             </File>
           </Files>
         </Group>

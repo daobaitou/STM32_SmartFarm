@@ -33,6 +33,8 @@
 #include "sensor_bh1750.h"
 #include "sensor_bmp180.h"
 #include "sensor_yfs201.h"
+#include "w25q_flash.h"
+#include "storage_manager.h"
 #include "app_tasks.h"
 /* USER CODE END Includes */
 
@@ -108,6 +110,34 @@ int main(void)
   HAL_StatusTypeDef bmp_ret = BMP180_Init();
   printf("BMP180 Init: %d\r\n", bmp_ret);
   YFS201_Init();
+
+  /* W25Q Flash 初始化测试 */
+  printf("\r\n=== W25Q Flash Test ===\r\n");
+  W25Q_Info_t flash_info;
+  if (W25Q_Init() == HAL_OK && W25Q_ReadID(&flash_info) == HAL_OK)
+  {
+      printf("W25Q: Manuf=0x%02X, ID=0x%04X, Size=%luKB\r\n",
+             flash_info.manufacturer, flash_info.device_id, flash_info.capacity/1024);
+  }
+  else
+  {
+      printf("W25Q: Not detected\r\n");
+  }
+
+  /* 存储管理器初始化 */
+  Storage_Init();
+  SystemConfig_t config;
+  if (Storage_LoadConfig(&config) == HAL_OK)
+  {
+      printf("Config: SoilThresh=%.0f~%.0f%%, Mode=%d\r\n",
+             config.soil_threshold_low, config.soil_threshold_high, config.irrigation_mode);
+  }
+  else
+  {
+      printf("Config: Using defaults\r\n");
+      Storage_SaveConfig(&config);
+  }
+
   printf("FreeRTOS starting...\r\n");
 
   FreeRTOS_Init();
