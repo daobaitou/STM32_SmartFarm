@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "sensor_yfs201.h"
+#include "usart2_driver.h"
 #include "tim.h"
 #include "stm32f1xx_hal_tim.h"
 /* FreeRTOS includes */
@@ -66,6 +67,7 @@ extern void xPortSysTickHandler(void);
 
 /* External variables --------------------------------------------------------*/
 extern TIM_HandleTypeDef htim4;
+extern UART_HandleTypeDef huart2;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -230,5 +232,13 @@ void EXTI0_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
     HAL_TIM_IRQHandler(&htim4);
+}
+
+/**
+  * @brief USART2 interrupt handler (ESP8266 RX)
+  */
+void USART2_IRQHandler(void)
+{
+    USART2_IRQ_Callback();
 }
 /* USER CODE END 1 */

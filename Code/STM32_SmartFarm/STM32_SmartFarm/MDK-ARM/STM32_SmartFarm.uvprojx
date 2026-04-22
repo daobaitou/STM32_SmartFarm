@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../App/Sensors;../App/Utils;..\App\Display;..\App\Drivers;..\Middlewares\FreeRTOS\Source\include;..\Middlewares\FreeRTOS\Source\portable\ARM_CM3;..\Core\Inc;..\App\Tasks;..\App\Storage</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../App/Sensors;../App/Utils;..\App\Display;..\App\Drivers;..\Middlewares\FreeRTOS\Source\include;..\Middlewares\FreeRTOS\Source\portable\ARM_CM3;..\Core\Inc;..\App\Tasks;..\App\Storage;..\App\Communication</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1004,6 +1004,26 @@
               <FileName>storage_manager.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\App\Storage\storage_manager.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>APP/Communication</GroupName>
+          <Files>
+            <File>
+              <FileName>usart2_driver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Communication\usart2_driver.c</FilePath>
+            </File>
+            <File>
+              <FileName>esp8266_at.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Communication\esp8266_at.c</FilePath>
+            </File>
+            <File>
+              <FileName>esp_mqtt.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Communication\esp_mqtt.c</FilePath>
             </File>
           </Files>
         </Group>

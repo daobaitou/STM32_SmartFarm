@@ -46,6 +46,12 @@ HAL_StatusTypeDef YFS201_Read(YFS201_Data_t *data)
     uint32_t now = HAL_GetTick();
     uint32_t dt_ms = now - last_tick;
 
+    /* 调试：打印累计脉冲数（确认中断是否触发） */
+    if (pulse_total > 0)
+    {
+        /* 有脉冲说明硬件正常 */
+    }
+
     if (dt_ms < 100)
     {
         data->valid = 0;

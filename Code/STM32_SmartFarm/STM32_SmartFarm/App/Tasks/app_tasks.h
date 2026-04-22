@@ -13,10 +13,12 @@
 #include "semphr.h"
 
 /* Task priorities */
-#define PRIORITY_SENSOR     2
+#define PRIORITY_SENSOR     3
 #define PRIORITY_LCD        2
-#define PRIORITY_PRINT      1
+#define PRIORITY_PRINT      2
 #define PRIORITY_LED        0
+#define PRIORITY_MQTT_PUB   2
+#define PRIORITY_MQTT_SUB   4
 
 /* Sensor data structure for queue */
 typedef struct {
@@ -35,6 +37,7 @@ typedef struct {
 
 /* Global handles */
 extern QueueHandle_t xQueue_SensorData;
+extern QueueHandle_t xQueue_ControlCmd;
 extern SemaphoreHandle_t xMutex_I2C;
 
 /* Function prototypes */
@@ -43,6 +46,8 @@ void vTask_Sensor(void *pvParameters);
 void vTask_LCD(void *pvParameters);
 void vTask_Print(void *pvParameters);
 void vTask_LED(void *pvParameters);
+void vTask_MQTT_Pub(void *pvParameters);
+void vTask_MQTT_Sub(void *pvParameters);
 
 #endif /* APP_TASKS_H */
 

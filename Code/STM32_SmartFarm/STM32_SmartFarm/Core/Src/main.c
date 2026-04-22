@@ -35,6 +35,8 @@
 #include "sensor_yfs201.h"
 #include "w25q_flash.h"
 #include "storage_manager.h"
+#include "usart2_driver.h"
+#include "esp_mqtt.h"
 #include "app_tasks.h"
 /* USER CODE END Includes */
 
@@ -66,7 +68,34 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+    /* 直接操作寄存器发送，几乎不用栈 */
+    uint32_t i;
+    const char *msg = "!!!OVF:";
+    while(*msg)
+    {
+        while(!(USART1->SR & USART_SR_TXE));
+        USART1->DR = *msg++;
+    }
+    if(pcTaskName)
+    {
+        char c;
+        while((c = *pcTaskName++))
+        {
+            while(!(USART1->SR & USART_SR_TXE));
+            USART1->DR = c;
+        }
+    }
+    while(!(USART1->SR & USART_SR_TXE));
+    USART1->DR = '\r';
+    while(!(USART1->SR & USART_SR_TXE));
+    USART1->DR = '\n';
 
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+    for(i = 0; i < 2000000; i++);
+    while(1);
+}
 /* USER CODE END 0 */
 
 /**
@@ -99,6 +128,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
   MX_ADC1_Init();
   /* TIM4已由HAL_Init→HAL_InitTick自动配置，无需再调用MX_TIM4_Init */
   /* USER CODE BEGIN 2 */
@@ -137,6 +167,12 @@ int main(void)
       printf("Config: Using defaults\r\n");
       Storage_SaveConfig(&config);
   }
+
+  /* USART2 driver for ESP8266 */
+  USART2_Driver_Init();
+  printf("USART2 driver init OK\r\n");
+
+  /* MQTT will be initialized by MQTT_Pub task after FreeRTOS starts */
 
   printf("FreeRTOS starting...\r\n");
 
