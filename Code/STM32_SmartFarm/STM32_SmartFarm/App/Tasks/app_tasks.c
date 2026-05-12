@@ -1,8 +1,9 @@
 /**
  * @file    app_tasks.c
  * @author  王国维
- * @date    2026-04-20
- * @brief   FreeRTOS task implementation
+ * @date    2026-05-12
+ * @brief   FreeRTOS task implementation - UART Bridge版
+ * @note    ESP8266独立处理MQTT，STM32只通过简单UART协议发送数据/接收命令
  */
 
 #include "FreeRTOS.h"
@@ -11,7 +12,7 @@
 #include "semphr.h"
 
 #include "app_tasks.h"
-#include "esp_mqtt.h"
+#include "uart_bridge.h"
 
 #include <stdio.h>
 #include "sensor_dht22.h"
@@ -47,7 +48,6 @@ void vTask_Sensor(void *pvParameters)
         BH1750_Data_t light;
         YFS201_Data_t flow;
 
-        /* 采集所有传感器 */
         if (DHT22_Read(&dht) == HAL_OK && dht.valid)
         {
             data.temperature = dht.temperature;
@@ -98,7 +98,7 @@ void vTask_Sensor(void *pvParameters)
 
         data.timestamp = xTaskGetTickCount();
 
-        /* 发送到队列（发送3份，每个消费者各取一份） */
+        /* 发送到队列（3份：LCD + Print + UART_TX） */
         if (xQueue_SensorData)
         {
             xQueueSend(xQueue_SensorData, &data, 0);
@@ -124,7 +124,6 @@ void vTask_LCD(void *pvParameters)
         if (xQueue_SensorData &&
             xQueueReceive(xQueue_SensorData, &data, pdMS_TO_TICKS(1000)) == pdPASS)
         {
-            printf("[LCD] Got data\r\n");
             if (xSemaphoreTake(xMutex_I2C, pdMS_TO_TICKS(100)) == pdTRUE)
             {
                 OLED_Clear();
@@ -151,12 +150,7 @@ void vTask_LCD(void *pvParameters)
                 OLED_DrawString(0, 40, buf, FONT_SMALL);
 
                 OLED_Refresh();
-                printf("[LCD] OLED refreshed\r\n");
                 xSemaphoreGive(xMutex_I2C);
-            }
-            else
-            {
-                printf("[LCD] I2C mutex timeout\r\n");
             }
         }
     }
@@ -203,84 +197,54 @@ void vTask_LED(void *pvParameters)
 
 /*-----------------------------------------------------------*/
 
-void vTask_MQTT_Pub(void *pvParameters)
+void vTask_UART_TX(void *pvParameters)
 {
-    printf("[MQTT_Pub] Task started, waiting for ESP8266...\r\n");
+    printf("[UART_TX] Task started\r\n");
     SensorData_t data;
-    uint32_t keepalive_cnt = 0;
-    uint8_t mqtt_initialized = 0;
-
-    /* 等待ESP8266启动完成 */
-    vTaskDelay(pdMS_TO_TICKS(5000));
-
-    /* 初始化MQTT（WiFi + Broker） */
-    for (int retry = 0; retry < 10; retry++)
-    {
-        printf("[MQTT_Pub] Init attempt %d...\r\n", retry + 1);
-        if (MQTT_Init("KmustAuto", "123456789", "124.223.5.91", 1883) == HAL_OK)
-        {
-            mqtt_initialized = 1;
-            printf("[MQTT_Pub] Init OK!\r\n");
-            break;
-        }
-        printf("[MQTT_Pub] Init failed, retry in 5s\r\n");
-        vTaskDelay(pdMS_TO_TICKS(5000));
-    }
 
     for (;;)
     {
         if (xQueue_SensorData &&
-            xQueueReceive(xQueue_SensorData, &data, pdMS_TO_TICKS(10000)) == pdPASS)
+            xQueueReceive(xQueue_SensorData, &data, pdMS_TO_TICKS(5000)) == pdPASS)
         {
-            if (!mqtt_initialized || !MQTT_IsConnected())
-            {
-                printf("[MQTT_Pub] Reconnecting...\r\n");
-                if (MQTT_Reconnect() == HAL_OK)
-                {
-                    mqtt_initialized = 1;
-                    printf("[MQTT_Pub] Reconnected!\r\n");
-                }
-                else
-                {
-                    continue;
-                }
-            }
-
-            if (MQTT_PublishSensorData(&data) == HAL_OK)
-                printf("[MQTT_Pub] Published OK\r\n");
-            else
-                printf("[MQTT_Pub] Publish failed\r\n");
-
-            keepalive_cnt++;
-            if (keepalive_cnt >= 15)
-            {
-                keepalive_cnt = 0;
-                MQTT_KeepAlive();
-            }
+            UART_Bridge_SendSensorData(&data);
+            printf("[UART_TX] Sent sensor data to ESP8266\r\n");
         }
     }
 }
 
 /*-----------------------------------------------------------*/
 
-void vTask_MQTT_Sub(void *pvParameters)
+void vTask_UART_RX(void *pvParameters)
 {
-    printf("[MQTT_Sub] Task started\r\n");
-    ControlCmd_t cmd;
+    printf("[UART_RX] Task started\r\n");
+    BridgeCmd_t cmd;
 
     for (;;)
     {
-        if (MQTT_IsConnected())
+        if (UART_Bridge_CheckCommand(&cmd))
         {
-            if (MQTT_CheckIncoming(&cmd) == pdTRUE)
-            {
-                printf("[MQTT_Sub] Cmd: %d\r\n", cmd.type);
-                if (xQueue_ControlCmd)
-                    xQueueSend(xQueue_ControlCmd, &cmd, 0);
-            }
-        }
+            printf("[UART_RX] Cmd: %d\r\n", cmd.type);
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+            ControlCmd_t ctrl;
+            switch (cmd.type)
+            {
+            case CMD_MODE_AUTO:    ctrl.type = CTRL_MODE_AUTO; break;
+            case CMD_MODE_MANUAL:  ctrl.type = CTRL_MODE_MANUAL; break;
+            case CMD_PUMP_ON:      ctrl.type = CTRL_PUMP_ON; break;
+            case CMD_PUMP_OFF:     ctrl.type = CTRL_PUMP_OFF; break;
+            case CMD_SET_THRESHOLD:
+                ctrl.type = CTRL_SET_THRESHOLD;
+                ctrl.params.threshold.low = cmd.params.threshold.low;
+                ctrl.params.threshold.high = cmd.params.threshold.high;
+                break;
+            default: continue;
+            }
+
+            if (xQueue_ControlCmd)
+                xQueueSend(xQueue_ControlCmd, &ctrl, 0);
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
@@ -290,45 +254,20 @@ void FreeRTOS_Init(void)
 {
     printf("[RTOS] Creating mutex...\r\n");
     xMutex_I2C = xSemaphoreCreateMutex();
-    if (xMutex_I2C)
-        printf("[RTOS] Mutex OK\r\n");
-    else
-        printf("[RTOS] Mutex FAILED\r\n");
 
-    printf("[RTOS] Creating queue (sensor)...\r\n");
+    printf("[RTOS] Creating queues...\r\n");
     xQueue_SensorData = xQueueCreate(3, sizeof(SensorData_t));
-    if (xQueue_SensorData)
-        printf("[RTOS] Queue OK\r\n");
-    else
-        printf("[RTOS] Queue FAILED\r\n");
-
-    printf("[RTOS] Creating queue (control)...\r\n");
     xQueue_ControlCmd = xQueueCreate(4, sizeof(ControlCmd_t));
-    if (xQueue_ControlCmd)
-        printf("[RTOS] Control queue OK\r\n");
-    else
-        printf("[RTOS] Control queue FAILED\r\n");
 
     printf("[RTOS] Creating tasks...\r\n");
     BaseType_t ret;
 
-    ret = xTaskCreate(vTask_Sensor, "Sensor", 512, NULL, PRIORITY_SENSOR, NULL);
-    printf("[RTOS] Sensor task: %d\r\n", ret);
-
-    ret = xTaskCreate(vTask_LCD, "LCD", 384, NULL, PRIORITY_LCD, NULL);
-    printf("[RTOS] LCD task: %d\r\n", ret);
-
-    ret = xTaskCreate(vTask_Print, "Print", 192, NULL, PRIORITY_PRINT, NULL);
-    printf("[RTOS] Print task: %d\r\n", ret);
-
-    ret = xTaskCreate(vTask_LED, "LED", 128, NULL, PRIORITY_LED, NULL);
-    printf("[RTOS] LED task: %d\r\n", ret);
-
-    ret = xTaskCreate(vTask_MQTT_Pub, "MQTT_Pub", 512, NULL, PRIORITY_MQTT_PUB, NULL);
-    printf("[RTOS] MQTT_Pub task: %d\r\n", ret);
-
-    ret = xTaskCreate(vTask_MQTT_Sub, "MQTT_Sub", 256, NULL, PRIORITY_MQTT_SUB, NULL);
-    printf("[RTOS] MQTT_Sub task: %d\r\n", ret);
+    ret = xTaskCreate(vTask_Sensor,   "Sensor",   512, NULL, PRIORITY_SENSOR,  NULL);
+    ret = xTaskCreate(vTask_LCD,      "LCD",      384, NULL, PRIORITY_LCD,     NULL);
+    ret = xTaskCreate(vTask_Print,    "Print",    192, NULL, PRIORITY_PRINT,   NULL);
+    ret = xTaskCreate(vTask_LED,      "LED",      128, NULL, PRIORITY_LED,     NULL);
+    ret = xTaskCreate(vTask_UART_TX,  "UART_TX",  256, NULL, PRIORITY_UART_TX, NULL);
+    ret = xTaskCreate(vTask_UART_RX,  "UART_RX",  128, NULL, PRIORITY_UART_RX, NULL);
 
     printf("[RTOS] All tasks created, starting scheduler...\r\n");
 }

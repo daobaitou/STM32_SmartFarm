@@ -1016,14 +1016,9 @@
               <FilePath>..\App\Communication\usart2_driver.c</FilePath>
             </File>
             <File>
-              <FileName>esp8266_at.c</FileName>
+              <FileName>uart_bridge.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\App\Communication\esp8266_at.c</FilePath>
-            </File>
-            <File>
-              <FileName>esp_mqtt.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\App\Communication\esp_mqtt.c</FilePath>
+              <FilePath>..\App\Communication\uart_bridge.c</FilePath>
             </File>
           </Files>
         </Group>

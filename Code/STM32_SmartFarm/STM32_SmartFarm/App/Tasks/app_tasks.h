@@ -17,8 +17,17 @@
 #define PRIORITY_LCD        2
 #define PRIORITY_PRINT      2
 #define PRIORITY_LED        0
-#define PRIORITY_MQTT_PUB   2
-#define PRIORITY_MQTT_SUB   4
+#define PRIORITY_UART_TX    2
+#define PRIORITY_UART_RX    4
+
+/* Control command types */
+typedef enum {
+    CTRL_MODE_AUTO,
+    CTRL_MODE_MANUAL,
+    CTRL_PUMP_ON,
+    CTRL_PUMP_OFF,
+    CTRL_SET_THRESHOLD
+} CtrlCmdType_t;
 
 /* Sensor data structure for queue */
 typedef struct {
@@ -35,6 +44,16 @@ typedef struct {
     uint32_t timestamp;
 } SensorData_t;
 
+/* Control command structure */
+typedef struct {
+    CtrlCmdType_t type;
+    union {
+        uint8_t mode;
+        uint8_t pump_state;
+        struct { float low; float high; } threshold;
+    } params;
+} ControlCmd_t;
+
 /* Global handles */
 extern QueueHandle_t xQueue_SensorData;
 extern QueueHandle_t xQueue_ControlCmd;
@@ -46,8 +65,7 @@ void vTask_Sensor(void *pvParameters);
 void vTask_LCD(void *pvParameters);
 void vTask_Print(void *pvParameters);
 void vTask_LED(void *pvParameters);
-void vTask_MQTT_Pub(void *pvParameters);
-void vTask_MQTT_Sub(void *pvParameters);
+void vTask_UART_TX(void *pvParameters);
+void vTask_UART_RX(void *pvParameters);
 
 #endif /* APP_TASKS_H */
-

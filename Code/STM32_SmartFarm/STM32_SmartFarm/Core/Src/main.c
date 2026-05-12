@@ -36,7 +36,7 @@
 #include "w25q_flash.h"
 #include "storage_manager.h"
 #include "usart2_driver.h"
-#include "esp_mqtt.h"
+#include "uart_bridge.h"
 #include "app_tasks.h"
 /* USER CODE END Includes */
 
