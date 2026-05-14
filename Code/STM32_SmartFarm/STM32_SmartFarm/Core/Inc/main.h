@@ -62,6 +62,26 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 
+/* 灌溉控制 */
+#define RELAY_Pin GPIO_PIN_1
+#define RELAY_GPIO_Port GPIOB
+
+/* 报警 */
+#define BUZZER_Pin GPIO_PIN_8
+#define BUZZER_GPIO_Port GPIOB
+#define ALARM_LED_Pin GPIO_PIN_9
+#define ALARM_LED_GPIO_Port GPIOB
+
+/* 按键 */
+#define KEY1_Pin GPIO_PIN_12
+#define KEY1_GPIO_Port GPIOB
+#define KEY2_Pin GPIO_PIN_13
+#define KEY2_GPIO_Port GPIOB
+#define KEY3_Pin GPIO_PIN_14
+#define KEY3_GPIO_Port GPIOB
+#define KEY4_Pin GPIO_PIN_15
+#define KEY4_GPIO_Port GPIOB
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

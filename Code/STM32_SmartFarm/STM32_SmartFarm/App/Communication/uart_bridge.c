@@ -21,12 +21,12 @@ void UART_Bridge_Init(void)
 
 void UART_Bridge_SendSensorData(const SensorData_t *data)
 {
-    char buf[128];
+    char buf[160];
     int len = snprintf(buf, sizeof(buf),
-        "SNS:{\"t\":%.1f,\"h\":%.1f,\"sm\":%u,\"st\":%.1f,\"l\":%.0f,\"p\":%.1f,\"f\":%.2f,\"v\":%.2f}\n",
+        "SNS:{\"t\":%.1f,\"h\":%.1f,\"sm\":%u,\"st\":%.1f,\"l\":%.0f,\"p\":%.1f,\"c\":%u,\"f\":%.2f,\"v\":%.2f}\n",
         data->temperature, data->humidity,
         data->soil_moisture, data->soil_temp,
-        data->light, data->pressure,
+        data->light, data->pressure, data->co2,
         data->flow_rate, data->total_volume);
 
     if (len > 0 && len < (int)sizeof(buf))

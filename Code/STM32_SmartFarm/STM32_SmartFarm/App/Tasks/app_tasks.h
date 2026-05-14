@@ -13,6 +13,7 @@
 #include "semphr.h"
 
 /* Task priorities */
+#define PRIORITY_IRRIGATION 4
 #define PRIORITY_SENSOR     3
 #define PRIORITY_LCD        2
 #define PRIORITY_PRINT      2
@@ -41,6 +42,7 @@ typedef struct {
     float light;
     float flow_rate;
     float total_volume;
+    uint16_t co2;
     uint32_t timestamp;
 } SensorData_t;
 
@@ -67,5 +69,6 @@ void vTask_Print(void *pvParameters);
 void vTask_LED(void *pvParameters);
 void vTask_UART_TX(void *pvParameters);
 void vTask_UART_RX(void *pvParameters);
+void vTask_Irrigation(void *pvParameters);
 
 #endif /* APP_TASKS_H */

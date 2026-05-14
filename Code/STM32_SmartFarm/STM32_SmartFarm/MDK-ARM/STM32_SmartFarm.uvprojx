@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../App/Sensors;../App/Utils;..\App\Display;..\App\Drivers;..\Middlewares\FreeRTOS\Source\include;..\Middlewares\FreeRTOS\Source\portable\ARM_CM3;..\Core\Inc;..\App\Tasks;..\App\Storage;..\App\Communication</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../App/Sensors;../App/Utils;..\App\Display;..\App\Drivers;..\Middlewares\FreeRTOS\Source\include;..\Middlewares\FreeRTOS\Source\portable\ARM_CM3;..\Core\Inc;..\App\Tasks;..\App\Storage;..\App\Communication;..\App\Control;..\App\Alarm</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -629,6 +629,11 @@
               <FileName>sensor_yfs201.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\App\Sensors\sensor_yfs201.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensor_mhz19b.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Sensors\sensor_mhz19b.c</FilePath>
             </File>
             <File>
               <FileName>stm32f1xx_hal_tim_ex.c</FileName>
@@ -1019,6 +1024,26 @@
               <FileName>uart_bridge.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\App\Communication\uart_bridge.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>App/Control</GroupName>
+          <Files>
+            <File>
+              <FileName>pump_control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Control\pump_control.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>App/Alarm</GroupName>
+          <Files>
+            <File>
+              <FileName>alarm_driver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Alarm\alarm_driver.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -15,13 +15,17 @@
 #include "uart_bridge.h"
 
 #include <stdio.h>
+#include <string.h>
 #include "sensor_dht22.h"
 #include "sensor_ds18b20.h"
 #include "sensor_fc28.h"
 #include "sensor_bh1750.h"
 #include "sensor_bmp180.h"
 #include "sensor_yfs201.h"
+#include "sensor_mhz19b.h"
 #include "display_oled.h"
+#include "pump_control.h"
+#include "alarm_driver.h"
 
 /* 消息队列 */
 QueueHandle_t xQueue_SensorData = NULL;
@@ -30,12 +34,20 @@ QueueHandle_t xQueue_ControlCmd = NULL;
 /* 互斥量：保护共享资源（OLED、软件I2C） */
 SemaphoreHandle_t xMutex_I2C = NULL;
 
+/* 灌溉控制全局状态 */
+static uint8_t irrigation_mode = 0;   /* 0=自动, 1=手动 */
+static uint8_t pump_on = 0;
+static float threshold_low = 30.0f;
+static float threshold_high = 70.0f;
+static volatile uint8_t last_soil = 0;
+
 /*-----------------------------------------------------------*/
 
 void vTask_Sensor(void *pvParameters)
 {
     printf("[Sensor] Task started\r\n");
     SensorData_t data;
+    memset(&data, 0, sizeof(data));
     TickType_t xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
@@ -69,6 +81,7 @@ void vTask_Sensor(void *pvParameters)
         {
             data.soil_moisture = fc.moisture;
             data.adc_raw = fc.adc_value;
+            last_soil = fc.moisture;
             printf("[Sensor] FC28: %u%%\r\n", fc.moisture);
         }
 
@@ -94,6 +107,20 @@ void vTask_Sensor(void *pvParameters)
         else
         {
             printf("[Sensor] YFS201: no flow\r\n");
+        }
+
+        /* MH-Z19B 每6秒读一次（每3个周期） */
+        {
+            static uint8_t co2_cycle = 0;
+            co2_cycle++;
+            if (co2_cycle >= 3) {
+                co2_cycle = 0;
+                MHZ19B_Data_t mhz;
+                if (MHZ19B_Read(&mhz) == HAL_OK && mhz.valid) {
+                    data.co2 = mhz.co2;
+                    printf("[Sensor] MHZ19B: CO2=%uppm\r\n", mhz.co2);
+                }
+            }
         }
 
         data.timestamp = xTaskGetTickCount();
@@ -133,21 +160,25 @@ void vTask_LCD(void *pvParameters)
                          data.temperature, data.humidity);
                 OLED_DrawString(0, 10, buf, FONT_SMALL);
 
-                snprintf(buf, sizeof(buf), "Soil:%u%%", data.soil_moisture);
+                snprintf(buf, sizeof(buf), "S:%u%% P:%.0fPa",
+                         data.soil_moisture, data.pressure);
                 OLED_DrawString(0, 20, buf, FONT_SMALL);
 
-                snprintf(buf, sizeof(buf), "P:%.0fhPa", data.pressure);
-                OLED_DrawString(64, 20, buf, FONT_SMALL);
-
-                snprintf(buf, sizeof(buf), "L:%.0flux", data.light);
+                snprintf(buf, sizeof(buf), "L:%.0f St:%.1f",
+                         data.light, data.soil_temp);
                 OLED_DrawString(0, 30, buf, FONT_SMALL);
 
-                snprintf(buf, sizeof(buf), "St:%.1fC", data.soil_temp);
-                OLED_DrawString(64, 30, buf, FONT_SMALL);
-
-                snprintf(buf, sizeof(buf), "F:%.1fL V:%.1fL",
-                         data.flow_rate, data.total_volume);
+                snprintf(buf, sizeof(buf), "C:%u F:%.1f/%.1fL",
+                         data.co2, data.flow_rate, data.total_volume);
                 OLED_DrawString(0, 40, buf, FONT_SMALL);
+
+                snprintf(buf, sizeof(buf), "%s PUMP:%s",
+                         irrigation_mode ? "MAN" : "AUTO",
+                         pump_on ? "ON" : "OFF");
+                OLED_DrawString(0, 50, buf, FONT_SMALL);
+
+                if (Alarm_IsActive())
+                    OLED_DrawString(64, 50, "ALRM!", FONT_SMALL);
 
                 OLED_Refresh();
                 xSemaphoreGive(xMutex_I2C);
@@ -170,10 +201,10 @@ void vTask_Print(void *pvParameters)
             xQueueReceive(xQueue_SensorData, &data, pdMS_TO_TICKS(2000)) == pdPASS)
         {
             cnt++;
-            printf("[Print #%lu] T:%.1f H:%.0f%% Soil:%u%% St:%.1f P:%.0f L:%.0f F:%.2f V:%.2f\r\n",
+            printf("[Print #%lu] T:%.1f H:%.0f%% Soil:%u%% St:%.1f P:%.0f L:%.0f CO2:%u F:%.2f V:%.2f\r\n",
                    cnt, data.temperature, data.humidity,
                    data.soil_moisture, data.soil_temp,
-                   data.pressure, data.light,
+                   data.pressure, data.light, data.co2,
                    data.flow_rate, data.total_volume);
         }
     }
@@ -250,6 +281,112 @@ void vTask_UART_RX(void *pvParameters)
 
 /*-----------------------------------------------------------*/
 
+static uint8_t button_debounce(GPIO_TypeDef *port, uint16_t pin, uint8_t idx)
+{
+    static uint8_t last_state[4] = {1, 1, 1, 1};
+    static uint32_t last_time[4] = {0, 0, 0, 0};
+
+    uint8_t current = (HAL_GPIO_ReadPin(port, pin) == GPIO_PIN_RESET) ? 0 : 1;
+    uint32_t now = HAL_GetTick();
+
+    if (current != last_state[idx]) {
+        last_state[idx] = current;
+        last_time[idx] = now;
+    } else if (current == 0 && (now - last_time[idx] > 30)) {
+        last_state[idx] = current;
+        return 1;
+    }
+    return 0;
+}
+
+void vTask_Irrigation(void *pvParameters)
+{
+    printf("[Irrigation] Task started, mode=%s, thresh=%.0f%%~%.0f%%\r\n",
+           irrigation_mode ? "MANUAL" : "AUTO", threshold_low, threshold_high);
+    ControlCmd_t cmd;
+
+    for (;;)
+    {
+        /* 处理按钮输入 */
+        if (button_debounce(KEY1_GPIO_Port, KEY1_Pin, 0)) {
+            irrigation_mode = !irrigation_mode;
+            printf("[BTN] Mode: %s\r\n", irrigation_mode ? "MANUAL" : "AUTO");
+        }
+        if (button_debounce(KEY2_GPIO_Port, KEY2_Pin, 1)) {
+            if (pump_on) { Pump_Off(); pump_on = 0; }
+            else { Pump_On(); pump_on = 1; }
+            printf("[BTN] Pump: %s\r\n", pump_on ? "ON" : "OFF");
+        }
+        if (button_debounce(KEY3_GPIO_Port, KEY3_Pin, 2)) {
+            if (Alarm_IsActive()) {
+                Alarm_Clear();
+                printf("[BTN] Alarm cleared\r\n");
+            }
+        }
+
+        /* 处理MQTT/远程控制命令 */
+        if (xQueue_ControlCmd &&
+            xQueueReceive(xQueue_ControlCmd, &cmd, pdMS_TO_TICKS(100)) == pdPASS)
+        {
+            switch (cmd.type) {
+            case CTRL_MODE_AUTO:
+                irrigation_mode = 0;
+                printf("[Irrigation] Mode: AUTO\r\n");
+                break;
+            case CTRL_MODE_MANUAL:
+                irrigation_mode = 1;
+                printf("[Irrigation] Mode: MANUAL\r\n");
+                break;
+            case CTRL_PUMP_ON:
+                Pump_On();
+                pump_on = 1;
+                printf("[Irrigation] Pump: ON\r\n");
+                break;
+            case CTRL_PUMP_OFF:
+                Pump_Off();
+                pump_on = 0;
+                printf("[Irrigation] Pump: OFF\r\n");
+                break;
+            case CTRL_SET_THRESHOLD:
+                threshold_low = cmd.params.threshold.low;
+                threshold_high = cmd.params.threshold.high;
+                printf("[Irrigation] Threshold: %.0f%%~%.0f%%\r\n",
+                       threshold_low, threshold_high);
+                break;
+            default:
+                break;
+            }
+        }
+
+        /* 自动灌溉逻辑（last_soil>0 确保已有有效读数再判断）*/
+        if (irrigation_mode == 0 && last_soil > 0) {
+            if (last_soil < threshold_low && !pump_on) {
+                Pump_On();
+                pump_on = 1;
+                printf("[Irrigation] AUTO: Pump ON (soil=%u%% < %.0f%%)\r\n",
+                       last_soil, threshold_low);
+            } else if (last_soil > threshold_high && pump_on) {
+                Pump_Off();
+                pump_on = 0;
+                printf("[Irrigation] AUTO: Pump OFF (soil=%u%% > %.0f%%)\r\n",
+                       last_soil, threshold_high);
+            }
+        }
+
+        /* 报警判断 */
+        if (last_soil > 0 && last_soil < threshold_low && !Alarm_IsActive()) {
+            Alarm_Trigger(ALARM_SOIL_DRY);
+            printf("[Alarm] Soil too dry: %u%%\r\n", last_soil);
+        } else if (last_soil > threshold_high && Alarm_IsActive() && !pump_on) {
+            Alarm_Clear();
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
+}
+
+/*-----------------------------------------------------------*/
+
 void FreeRTOS_Init(void)
 {
     printf("[RTOS] Creating mutex...\r\n");
@@ -260,14 +397,17 @@ void FreeRTOS_Init(void)
     xQueue_ControlCmd = xQueueCreate(4, sizeof(ControlCmd_t));
 
     printf("[RTOS] Creating tasks...\r\n");
-    BaseType_t ret;
 
-    ret = xTaskCreate(vTask_Sensor,   "Sensor",   512, NULL, PRIORITY_SENSOR,  NULL);
-    ret = xTaskCreate(vTask_LCD,      "LCD",      384, NULL, PRIORITY_LCD,     NULL);
-    ret = xTaskCreate(vTask_Print,    "Print",    192, NULL, PRIORITY_PRINT,   NULL);
-    ret = xTaskCreate(vTask_LED,      "LED",      128, NULL, PRIORITY_LED,     NULL);
-    ret = xTaskCreate(vTask_UART_TX,  "UART_TX",  256, NULL, PRIORITY_UART_TX, NULL);
-    ret = xTaskCreate(vTask_UART_RX,  "UART_RX",  128, NULL, PRIORITY_UART_RX, NULL);
+    Pump_Init();
+    Alarm_Init();
+
+    xTaskCreate(vTask_Sensor,     "Sensor",     512, NULL, PRIORITY_SENSOR,      NULL);
+    xTaskCreate(vTask_Irrigation, "Irrigation", 256, NULL, PRIORITY_IRRIGATION,  NULL);
+    xTaskCreate(vTask_LCD,        "LCD",        384, NULL, PRIORITY_LCD,         NULL);
+    xTaskCreate(vTask_Print,      "Print",      192, NULL, PRIORITY_PRINT,       NULL);
+    xTaskCreate(vTask_LED,        "LED",        128, NULL, PRIORITY_LED,         NULL);
+    xTaskCreate(vTask_UART_TX,    "UART_TX",    256, NULL, PRIORITY_UART_TX,     NULL);
+    xTaskCreate(vTask_UART_RX,    "UART_RX",    128, NULL, PRIORITY_UART_RX,     NULL);
 
     printf("[RTOS] All tasks created, starting scheduler...\r\n");
 }

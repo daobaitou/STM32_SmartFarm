@@ -33,6 +33,7 @@
 #include "sensor_bh1750.h"
 #include "sensor_bmp180.h"
 #include "sensor_yfs201.h"
+#include "sensor_mhz19b.h"
 #include "w25q_flash.h"
 #include "storage_manager.h"
 #include "usart2_driver.h"
@@ -129,6 +130,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_USART3_UART_Init();
   MX_ADC1_Init();
   /* TIM4已由HAL_Init→HAL_InitTick自动配置，无需再调用MX_TIM4_Init */
   /* USER CODE BEGIN 2 */
@@ -140,6 +142,7 @@ int main(void)
   HAL_StatusTypeDef bmp_ret = BMP180_Init();
   printf("BMP180 Init: %d\r\n", bmp_ret);
   YFS201_Init();
+  MHZ19B_Init();
 
   /* W25Q Flash 初始化测试 */
   printf("\r\n=== W25Q Flash Test ===\r\n");

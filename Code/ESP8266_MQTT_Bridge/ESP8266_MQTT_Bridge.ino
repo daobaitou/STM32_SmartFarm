@@ -131,6 +131,7 @@ void publish_sensor_data(const String& compactJson) {
   data["soil_temperature"]  = input["st"] | 0.0f;
   data["light"]             = input["l"] | 0.0f;
   data["pressure"]          = input["p"] | 0.0f;
+  data["co2"]              = input["c"] | 0;
   data["water_flow"]        = input["f"] | 0.0f;
   data["total_volume"]      = input["v"] | 0.0f;
 
@@ -151,12 +152,20 @@ void publish_sensor_data(const String& compactJson) {
 void handle_uart() {
   static String buffer = "";
 
-  while (stmSerial.available()) {
-    char c = stmSerial.read();
+  /* 同时监听 SoftwareSerial(STM32) 和 硬件Serial(调试) */
+  while (stmSerial.available() || Serial.available()) {
+    char c;
+    if (stmSerial.available()) {
+      c = (char)stmSerial.read();
+    } else {
+      c = (char)Serial.read();
+    }
+
     if (c == '\n') {
       buffer.trim();
       if (buffer.startsWith("SNS:")) {
         String json = buffer.substring(4);
+        Serial.println("[UART] Received: " + json);
         publish_sensor_data(json);
       }
       buffer = "";

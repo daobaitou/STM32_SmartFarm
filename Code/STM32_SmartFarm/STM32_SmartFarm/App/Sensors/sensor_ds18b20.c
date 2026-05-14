@@ -140,9 +140,25 @@ HAL_StatusTypeDef DS18B20_Init(void)
     return HAL_OK;
 }
 
+/* Dallas 1-Wire CRC8: polynomial x^8 + x^5 + x^4 + 1 */
+static uint8_t ow_crc8(const uint8_t *buf, uint8_t len)
+{
+    uint8_t crc = 0;
+    for (uint8_t i = 0; i < len; i++) {
+        uint8_t inbyte = buf[i];
+        for (uint8_t j = 0; j < 8; j++) {
+            uint8_t mix = (crc ^ inbyte) & 0x01;
+            crc >>= 1;
+            if (mix) crc ^= 0x8C;
+            inbyte >>= 1;
+        }
+    }
+    return crc;
+}
+
 HAL_StatusTypeDef DS18B20_Read(DS18B20_Data_t *data)
 {
-    uint8_t tl, th;
+    uint8_t spad[9];  /* full scratchpad: 0=tl, 1=th, ..., 8=crc8 */
 
     memset(data, 0, sizeof(DS18B20_Data_t));
 
@@ -158,11 +174,19 @@ HAL_StatusTypeDef DS18B20_Read(DS18B20_Data_t *data)
     if (!ow_reset()) { __enable_irq(); return HAL_ERROR; }
     ow_write_byte(0xCC);
     ow_write_byte(0xBE);
-    tl = ow_read_byte();
-    th = ow_read_byte();
+
+    /* 读取全部9字节（含CRC） */
+    for (uint8_t i = 0; i < 9; i++)
+        spad[i] = ow_read_byte();
     __enable_irq();
 
-    int16_t raw = (th << 8) | tl;
+    /* CRC8校验 */
+    if (ow_crc8(spad, 9) != 0) {
+        printf("DS18B20: CRC fail\r\n");
+        return HAL_ERROR;
+    }
+
+    int16_t raw = (spad[1] << 8) | spad[0];
     float temp = (float)raw / 16.0f;
 
     if (temp < -55.0f || temp > 125.0f)
