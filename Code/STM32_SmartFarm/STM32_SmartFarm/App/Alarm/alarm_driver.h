@@ -24,6 +24,7 @@ typedef enum {
 void Alarm_Init(void);
 void Alarm_SetLED(uint8_t on);
 void Alarm_Beep(uint16_t ms);
+void Alarm_Click(void);
 void Alarm_Trigger(AlarmType_t type);
 void Alarm_Clear(void);
 uint8_t Alarm_IsActive(void);

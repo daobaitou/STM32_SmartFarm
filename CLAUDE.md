@@ -89,23 +89,31 @@ F:\Graduation_project\
 
 ### 任务优先级（高→低）
 ```
-优先级6 | Task_Alarm        | 报警判断 + 断电响应
-优先级5 | Task_MQTT_Sub     | MQTT订阅 + 命令接收
-优先级4 | Task_Irrigation   | 灌溉逻辑 + 水流统计
-优先级3 | Task_WaterLevel   | 水位监测 + 低水位报警
-优先级2 | Task_Sensor       | 环境传感器采集
-优先级2 | Task_Rain         | 雨滴检测 + 中断处理
+优先级6 | Task_Irrigation   | 灌溉+风扇+窗户+按键（独占最高，不用printf）
+优先级4 | Task_UART_RX      | ESP8266命令接收
+优先级3 | Task_Sensor       | 环境传感器采集
 优先级2 | Task_LCD          | OLED显示
-优先级2 | Task_Key          | 按键扫描
-优先级1 | Task_MQTT_Pub     | MQTT数据上传
+优先级2 | Task_Print        | 串口打印调试
+优先级2 | Task_UART_TX      | 传感器数据发送至ESP8266
+优先级0 | Task_LED          | 板载LED状态指示
+```
+
+### 任务栈配置（单位：words/4字节）
+```
+Sensor:     512 words (2048B) - 使用printf+float
+Irrigation: 384 words (1536B) - 不用printf，用debug_print
+LCD:        384 words (1536B) - snprintf+OLED
+Print:      256 words (1024B) - 不用float printf
+UART_TX:    256 words (1024B)
+UART_RX:    128 words (512B)
+LED:        128 words (512B)
 ```
 
 ### 消息队列
 ```
-sensor_data_queue  → Task_Sensor → Task_LCD + Task_MQTT_Pub
-control_cmd_queue  → Task_MQTT_Sub → Task_Irrigation
-alarm_data_queue   → Task_Sensor/Task_WaterLevel → Task_Alarm
-rain_event_queue   → Task_Rain → Task_Irrigation
+xQueue_SensorData (3项) → Sensor → LCD + Print + UART_TX
+xQueue_ControlCmd  (4项) → UART_RX → Irrigation
+xMutex_I2C                    → LCD + Sensor共享I2C保护
 ```
 
 ### 采集周期
@@ -131,6 +139,8 @@ rain_event_queue   → Task_Rain → Task_Irrigation
       smartfarm/{device_id}/status/report
 下行: smartfarm/{device_id}/control/mode
       smartfarm/{device_id}/control/pump
+      smartfarm/{device_id}/control/fan
+      smartfarm/{device_id}/control/window
       smartfarm/{device_id}/config/threshold
 ```
 
@@ -219,22 +229,26 @@ rain_event_queue   → Task_Rain → Task_Irrigation
 - [x] 技术方案设计
 - [x] 硬件清单整理
 - [x] 项目知识文档建立
+- [x] STM32开发环境搭建
+- [x] 传感器驱动开发（DHT22, DS18B20, FC28, BH1750, BMP180, YF-S201, MH-Z19B）
+- [x] OLED显示驱动（SSD1306, 软件I2C）
+- [x] FreeRTOS多任务架构（7个任务）
+- [x] ESP8266独立MQTT通信（Arduino固件）
+- [x] 灌溉控制（自动/手动模式，土壤阈值触发）
+- [x] 报警系统（蜂鸣器+LED，土壤过干报警）
+- [x] 按键控制（4键，50ms消抖，单次触发，蜂鸣器确认音）
+- [x] 风扇控制（PA4, TB6612驱动，自动温度触发）
+- [x] 舵机窗户控制（PA7, TIM3 PWM 50Hz，自动湿度触发）
+- [x] W25Q Flash配置存储
+- [x] UART Bridge协议（STM32↔ESP8266）
 
 ### 进行中
-- [ ] 硬件采购
+- [ ] 系统稳定性联调测试
 
 ### 待开始
-- [ ] STM32开发环境搭建
-- [ ] 传感器驱动开发（DHT22, DS18B20, BH1750等）
-- [ ] FreeRTOS移植与任务架构
-- [ ] ESP8266 MQTT通信
-- [ ] 灌溉控制逻辑
-- [ ] OLED显示
-- [ ] 报警功能
 - [ ] QT上位机开发
 - [ ] Flask Web端开发
 - [ ] 云服务器部署
-- [ ] 系统联调测试
 - [ ] 论文撰写
 
 ---
@@ -309,6 +323,10 @@ rain_event_queue   → Task_Rain → Task_Irrigation
 | 2024-03 | 选择STM32F103C8T6 | 成本低(~10元)、资源够用、资料丰富 |
 | 2024-03 | 双电源架构 | 保障断电连续运行，体现系统可靠性 |
 | 2024-03 | 私有化部署 | 数据安全可控，体现完整云端能力 |
+| 2026-05 | Irrigation任务不用printf | ARMCC printf栈消耗~1.5KB，384words栈不够 |
+| 2026-05 | Irrigation优先级设为6（最高） | 共享优先级导致任务无法启动 |
+| 2026-05 | FreeRTOS堆从12KB增至15KB | 7个任务+定时器+队列+互斥量需要更多空间 |
+| 2026-05 | 按键单次触发+确认音 | 避免按住时反复切换，提升用户体验 |
 
 ---
 

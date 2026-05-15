@@ -15,6 +15,8 @@
 #define TOPIC_CTRL_MODE   "smartfarm/farm_001/control/mode"
 #define TOPIC_CTRL_PUMP   "smartfarm/farm_001/control/pump"
 #define TOPIC_CTRL_THRESH "smartfarm/farm_001/config/threshold"
+#define TOPIC_CTRL_FAN    "smartfarm/farm_001/control/fan"
+#define TOPIC_CTRL_WINDOW "smartfarm/farm_001/control/window"
 
 /* UART to STM32 (SoftwareSerial) */
 #define UART_BAUD     115200

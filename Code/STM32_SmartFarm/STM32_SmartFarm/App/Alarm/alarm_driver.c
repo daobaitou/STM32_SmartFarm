@@ -3,6 +3,7 @@
  * @author  王国维
  * @date    2026-05-13
  * @brief   蜂鸣器 + LED报警驱动 - PB8(蜂鸣器), PB9(LED)
+ * @note    蜂鸣器为低电平触发模块: LOW=响, HIGH=静音
  */
 
 #include "alarm_driver.h"
@@ -12,7 +13,7 @@ static AlarmType_t alarm_type = ALARM_NONE;
 
 void Alarm_Init(void)
 {
-    HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);    /* 低电平触发，高=静音 */
     HAL_GPIO_WritePin(ALARM_LED_GPIO_Port, ALARM_LED_Pin, GPIO_PIN_RESET);
     alarm_active = 0;
     alarm_type = ALARM_NONE;
@@ -26,9 +27,17 @@ void Alarm_SetLED(uint8_t on)
 
 void Alarm_Beep(uint16_t ms)
 {
-    HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);  /* 低电平=响 */
     HAL_Delay(ms);
+    HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);    /* 高电平=静音 */
+}
+
+/* 短促确认音（按键反馈） */
+void Alarm_Click(void)
+{
     HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+    HAL_Delay(20);
+    HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
 }
 
 void Alarm_Trigger(AlarmType_t type)
@@ -41,13 +50,11 @@ void Alarm_Trigger(AlarmType_t type)
     case ALARM_SOIL_DRY:
     case ALARM_WATER_LOW:
     case ALARM_SYSTEM:
-        /* 长鸣 */
         Alarm_Beep(500);
         break;
     case ALARM_TEMP_HIGH:
     case ALARM_TEMP_LOW:
     case ALARM_SOIL_WET:
-        /* 短促3声 */
         for (int i = 0; i < 3; i++) {
             Alarm_Beep(150);
             HAL_Delay(100);
@@ -60,11 +67,10 @@ void Alarm_Trigger(AlarmType_t type)
 
 void Alarm_Clear(void)
 {
-    /* 短鸣确认清除 */
     if (alarm_active) {
         Alarm_Beep(50);
     }
-    HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);    /* 高电平=静音 */
     Alarm_SetLED(0);
     alarm_active = 0;
     alarm_type = ALARM_NONE;

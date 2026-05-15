@@ -38,6 +38,9 @@
 #include "storage_manager.h"
 #include "usart2_driver.h"
 #include "uart_bridge.h"
+#include "servo_control.h"
+#include "fan_control.h"
+#include "power_detect.h"
 #include "app_tasks.h"
 /* USER CODE END Includes */
 
@@ -143,6 +146,13 @@ int main(void)
   printf("BMP180 Init: %d\r\n", bmp_ret);
   YFS201_Init();
   MHZ19B_Init();
+
+  /* Servo (TIM3 PWM) + Fan (PA4) */
+  Servo_Init();
+  Fan_Init();
+
+  /* Power failure detection (PA5 EXTI) */
+  PowerDetect_Init();
 
   /* W25Q Flash 初始化测试 */
   printf("\r\n=== W25Q Flash Test ===\r\n");

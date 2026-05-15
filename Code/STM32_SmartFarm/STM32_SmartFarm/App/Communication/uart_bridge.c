@@ -64,6 +64,18 @@ uint8_t UART_Bridge_CheckCommand(BridgeCmd_t *cmd)
                 cmd_idx = 0;
                 return 1;
             }
+            else if (strncmp(cmd_buf, "CMD:FAN:", 8) == 0)
+            {
+                cmd->type = (strstr(cmd_buf + 8, "ON")) ? CMD_FAN_ON : CMD_FAN_OFF;
+                cmd_idx = 0;
+                return 1;
+            }
+            else if (strncmp(cmd_buf, "CMD:WDOW:", 9) == 0)
+            {
+                cmd->type = (strstr(cmd_buf + 9, "OPEN")) ? CMD_WINDOW_OPEN : CMD_WINDOW_CLOSE;
+                cmd_idx = 0;
+                return 1;
+            }
             /* ACK/NACK/ERR 忽略 */
             cmd_idx = 0;
         }

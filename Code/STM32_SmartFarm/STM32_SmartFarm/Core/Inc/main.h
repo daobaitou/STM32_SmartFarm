@@ -82,6 +82,14 @@ void Error_Handler(void);
 #define KEY4_Pin GPIO_PIN_15
 #define KEY4_GPIO_Port GPIOB
 
+/* 风扇控制 */
+#define FAN_Pin GPIO_PIN_4
+#define FAN_GPIO_Port GPIOA
+
+/* 断电检测 */
+#define POWER_DETECT_Pin GPIO_PIN_5
+#define POWER_DETECT_GPIO_Port GPIOA
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -13,7 +13,7 @@
 #include "semphr.h"
 
 /* Task priorities */
-#define PRIORITY_IRRIGATION 4
+#define PRIORITY_IRRIGATION 6
 #define PRIORITY_SENSOR     3
 #define PRIORITY_LCD        2
 #define PRIORITY_PRINT      2
@@ -27,7 +27,11 @@ typedef enum {
     CTRL_MODE_MANUAL,
     CTRL_PUMP_ON,
     CTRL_PUMP_OFF,
-    CTRL_SET_THRESHOLD
+    CTRL_SET_THRESHOLD,
+    CTRL_FAN_ON,
+    CTRL_FAN_OFF,
+    CTRL_WINDOW_OPEN,
+    CTRL_WINDOW_CLOSE
 } CtrlCmdType_t;
 
 /* Sensor data structure for queue */

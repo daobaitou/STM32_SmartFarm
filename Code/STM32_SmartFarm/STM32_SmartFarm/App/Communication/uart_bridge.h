@@ -19,6 +19,10 @@ typedef enum {
     CMD_PUMP_ON,
     CMD_PUMP_OFF,
     CMD_SET_THRESHOLD,
+    CMD_FAN_ON,
+    CMD_FAN_OFF,
+    CMD_WINDOW_OPEN,
+    CMD_WINDOW_CLOSE,
     CMD_UNKNOWN
 } BridgeCmdType_t;
 

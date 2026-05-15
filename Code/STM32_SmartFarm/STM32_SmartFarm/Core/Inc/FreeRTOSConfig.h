@@ -15,7 +15,7 @@
 #define configUSE_TICK_HOOK             0
 
 /* 内存配置 */
-#define configTOTAL_HEAP_SIZE           ((size_t)(12 * 1024))
+#define configTOTAL_HEAP_SIZE           ((size_t)(15 * 1024))
 #define configMINIMAL_STACK_SIZE        ((uint16_t)128)
 #define configMAX_TASK_NAME_LEN         (16)
 

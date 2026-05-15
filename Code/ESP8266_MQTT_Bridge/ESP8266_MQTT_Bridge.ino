@@ -87,6 +87,20 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       }
     }
   }
+  else if (String(topic) == TOPIC_CTRL_FAN) {
+    if (msg.equalsIgnoreCase("ON") || msg.indexOf("on") >= 0) {
+      cmd = "CMD:FAN:ON\n";
+    } else {
+      cmd = "CMD:FAN:OFF\n";
+    }
+  }
+  else if (String(topic) == TOPIC_CTRL_WINDOW) {
+    if (msg.equalsIgnoreCase("OPEN") || msg.indexOf("open") >= 0) {
+      cmd = "CMD:WDOW:OPEN\n";
+    } else {
+      cmd = "CMD:WDOW:CLOSE\n";
+    }
+  }
 
   if (cmd.length() > 0) {
     stmSerial.print(cmd);
@@ -101,6 +115,8 @@ bool reconnect_mqtt() {
     mqtt.subscribe(TOPIC_CTRL_MODE, 1);
     mqtt.subscribe(TOPIC_CTRL_PUMP, 1);
     mqtt.subscribe(TOPIC_CTRL_THRESH, 1);
+    mqtt.subscribe(TOPIC_CTRL_FAN, 1);
+    mqtt.subscribe(TOPIC_CTRL_WINDOW, 1);
     Serial.println("[MQTT] Subscribed to control topics");
     return true;
   }

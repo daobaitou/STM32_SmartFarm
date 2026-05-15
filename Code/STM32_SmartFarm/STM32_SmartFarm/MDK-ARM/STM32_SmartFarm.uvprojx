@@ -1035,6 +1035,16 @@
               <FileType>1</FileType>
               <FilePath>..\App\Control\pump_control.c</FilePath>
             </File>
+            <File>
+              <FileName>servo_control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Control\servo_control.c</FilePath>
+            </File>
+            <File>
+              <FileName>fan_control.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Control\fan_control.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

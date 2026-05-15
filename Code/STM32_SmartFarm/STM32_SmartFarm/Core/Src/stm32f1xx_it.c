@@ -26,6 +26,7 @@
 #include "usart2_driver.h"
 #include "tim.h"
 #include "stm32f1xx_hal_tim.h"
+#include "power_detect.h"
 /* FreeRTOS includes */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -166,8 +167,7 @@ void HardFault_Handler(void)
   }
 
   /* 从栈中提取PC和LR */
-  uint32_t *stack_ptr;
-  __ASM volatile ("MRS %0, MSP" : "=r" (stack_ptr));
+  uint32_t *stack_ptr = (uint32_t *)__get_MSP();
   uint32_t stacked_pc = stack_ptr[6];
   uint32_t stacked_lr = stack_ptr[5];
 
@@ -320,5 +320,25 @@ void TIM4_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
     USART2_IRQ_Callback();
+}
+
+/**
+  * @brief EXTI Line[9:5] interrupt handler (PA5 - Power Detect)
+  */
+void EXTI9_5_IRQHandler(void)
+{
+    if (__HAL_GPIO_EXTI_GET_IT(GPIO_PIN_5) != RESET)
+    {
+        __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_5);
+
+        if (HAL_GPIO_ReadPin(POWER_DETECT_GPIO_Port, POWER_DETECT_Pin) == GPIO_PIN_SET)
+        {
+            PowerDetect_SetBackup();
+        }
+        else
+        {
+            PowerDetect_SetMain();
+        }
+    }
 }
 /* USER CODE END 1 */

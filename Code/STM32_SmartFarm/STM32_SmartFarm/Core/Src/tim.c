@@ -8,6 +8,7 @@
 #include "stm32f1xx_hal_tim.h"
 
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim3;
 
 /**
  * @brief  Override weak HAL_InitTick() — use TIM4 instead of SysTick
