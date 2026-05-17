@@ -513,7 +513,7 @@ void FreeRTOS_Init(void)
     ret = xTaskCreate(vTask_LED,        "LED",        128, NULL, PRIORITY_LED,         NULL);
     printf("[RTOS] LED: %s (free=%u)\r\n", ret==pdPASS?"OK":"FAIL", (unsigned int)xPortGetFreeHeapSize());
 
-    ret = xTaskCreate(vTask_UART_TX,    "UART_TX",    256, NULL, PRIORITY_UART_TX,     NULL);
+    ret = xTaskCreate(vTask_UART_TX,    "UART_TX",    512, NULL, PRIORITY_UART_TX,     NULL);
     printf("[RTOS] UART_TX: %s (free=%u)\r\n", ret==pdPASS?"OK":"FAIL", (unsigned int)xPortGetFreeHeapSize());
 
     ret = xTaskCreate(vTask_UART_RX,    "UART_RX",    128, NULL, PRIORITY_UART_RX,     NULL);
