@@ -279,7 +279,7 @@ void vTask_UART_TX(void *pvParameters)
 
 void vTask_UART_RX(void *pvParameters)
 {
-    printf("[UART_RX] Task started @115200\r\n");
+    debug_print("[UART_RX] started\r\n");
     BridgeCmd_t cmd;
     uint32_t last_dbg_time = 0;
 
@@ -287,7 +287,7 @@ void vTask_UART_RX(void *pvParameters)
     {
         if (UART_Bridge_CheckCommand(&cmd))
         {
-            printf("[UART_RX] Cmd received: %d\r\n", cmd.type);
+            debug_print("[UART_RX] CMD!\r\n");
 
             ControlCmd_t ctrl;
             switch (cmd.type)
@@ -318,7 +318,8 @@ void vTask_UART_RX(void *pvParameters)
         {
             last_dbg_time = now;
             uint16_t rx_cnt = UART_Bridge_GetRxCount();
-            printf("[UART_RX] Bytes received: %u\r\n", rx_cnt);
+            if (rx_cnt > 0)
+                debug_print("[UART_RX] HAS_DATA\r\n");
         }
 
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -511,10 +512,10 @@ void FreeRTOS_Init(void)
     ret = xTaskCreate(vTask_LED,        "LED",        128, NULL, PRIORITY_LED,         NULL);
     printf("[RTOS] LED: %s (free=%u)\r\n", ret==pdPASS?"OK":"FAIL", (unsigned int)xPortGetFreeHeapSize());
 
-    ret = xTaskCreate(vTask_UART_TX,    "UART_TX",    512, NULL, PRIORITY_UART_TX,     NULL);
+    ret = xTaskCreate(vTask_UART_TX,    "UART_TX",    256, NULL, PRIORITY_UART_TX,     NULL);
     printf("[RTOS] UART_TX: %s (free=%u)\r\n", ret==pdPASS?"OK":"FAIL", (unsigned int)xPortGetFreeHeapSize());
 
-    ret = xTaskCreate(vTask_UART_RX,    "UART_RX",    256, NULL, PRIORITY_UART_RX,     NULL);
+    ret = xTaskCreate(vTask_UART_RX,    "UART_RX",    128, NULL, PRIORITY_UART_RX,     NULL);
     printf("[RTOS] UART_RX: %s (free=%u)\r\n", ret==pdPASS?"OK":"FAIL", (unsigned int)xPortGetFreeHeapSize());
 
     printf("[RTOS] All tasks created, starting scheduler...\r\n");

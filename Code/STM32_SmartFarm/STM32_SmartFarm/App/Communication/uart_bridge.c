@@ -48,9 +48,6 @@ uint8_t UART_Bridge_CheckCommand(BridgeCmd_t *cmd)
         {
             cmd_buf[cmd_idx] = '\0';
 
-            /* 调试: 打印收到的每一行内容 */
-            printf("[BRIDGE] Line: \"%s\"\r\n", cmd_buf);
-
             if (strncmp(cmd_buf, "CMD:MODE:", 9) == 0)
             {
                 cmd->type = (strstr(cmd_buf + 9, "AUTO")) ? CMD_MODE_AUTO : CMD_MODE_MANUAL;
