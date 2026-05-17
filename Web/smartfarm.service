@@ -1,0 +1,14 @@
+[Unit]
+Description=SmartFarm Flask Web Application
+After=network.target mosquitto.service
+Requires=mosquitto.service
+
+[Service]
+User=root
+WorkingDirectory=/opt/smartfarm
+ExecStart=/opt/smartfarm/venv/bin/gunicorn -w 2 -b 127.0.0.1:5000 app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

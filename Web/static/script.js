@@ -1,0 +1,1 @@
+/* SmartFarm - Shared JS utilities */

@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% block title %}历史数据{% endblock %}
+{% block content %}
+<div class="history">
+    <div class="time-tabs">
+        <button class="active" data-hours="1">1小时</button>
+        <button data-hours="6">6小时</button>
+        <button data-hours="24">24小时</button>
+        <button data-hours="72">3天</button>
+    </div>
+
+    <div class="sensor-grid" id="sensor-grid">
+        <div class="sensor-card" data-field="temperature" data-color="#e74c3c" data-unit="°C" data-label="空气温度">
+            <div class="sensor-header">
+                <h3>空气温度</h3>
+                <span class="sensor-value">--°C</span>
+            </div>
+            <div class="chart-box"><canvas></canvas></div>
+            <div class="sensor-stats"></div>
+        </div>
+
+        <div class="sensor-card" data-field="humidity" data-color="#3498db" data-unit="%" data-label="空气湿度">
+            <div class="sensor-header">
+                <h3>空气湿度</h3>
+                <span class="sensor-value">--%</span>
+            </div>
+            <div class="chart-box"><canvas></canvas></div>
+            <div class="sensor-stats"></div>
+        </div>
+
+        <div class="sensor-card" data-field="soil_moisture" data-color="#8d6e63" data-unit="%" data-label="土壤湿度">
+            <div class="sensor-header">
+                <h3>土壤湿度</h3>
+                <span class="sensor-value">--%</span>
+            </div>
+            <div class="chart-box"><canvas></canvas></div>
+            <div class="sensor-stats"></div>
+        </div>
+
+        <div class="sensor-card" data-field="soil_temp" data-color="#e67e22" data-unit="°C" data-label="土壤温度">
+            <div class="sensor-header">
+                <h3>土壤温度</h3>
+                <span class="sensor-value">--°C</span>
+            </div>
+            <div class="chart-box"><canvas></canvas></div>
+            <div class="sensor-stats"></div>
+        </div>
+
+        <div class="sensor-card" data-field="light" data-color="#f39c12" data-unit="lux" data-label="光照强度">
+            <div class="sensor-header">
+                <h3>光照强度</h3>
+                <span class="sensor-value">--lux</span>
+            </div>
+            <div class="chart-box"><canvas></canvas></div>
+            <div class="sensor-stats"></div>
+        </div>
+
+        <div class="sensor-card" data-field="co2" data-color="#27ae60" data-unit="ppm" data-label="CO2浓度">
+            <div class="sensor-header">
+                <h3>CO2浓度</h3>
+                <span class="sensor-value">--ppm</span>
+            </div>
+            <div class="chart-box"><canvas></canvas></div>
+            <div class="sensor-stats"></div>
+        </div>
+
+        <div class="sensor-card" data-field="pressure" data-color="#9b59b6" data-unit="hPa" data-label="大气压强">
+            <div class="sensor-header">
+                <h3>大气压强</h3>
+                <span class="sensor-value">--hPa</span>
+            </div>
+            <div class="chart-box"><canvas></canvas></div>
+            <div class="sensor-stats"></div>
+        </div>
+
+        <div class="sensor-card" data-field="flow_rate" data-color="#00bcd4" data-unit="L/min" data-label="水流速率">
+            <div class="sensor-header">
+                <h3>水流速率</h3>
+                <span class="sensor-value">--L/min</span>
+            </div>
+            <div class="chart-box"><canvas></canvas></div>
+            <div class="sensor-stats"></div>
+        </div>
+
+        <div class="sensor-card" data-field="total_volume" data-color="#1565c0" data-unit="L" data-label="累计水量" data-fill="true">
+            <div class="sensor-header">
+                <h3>累计水量</h3>
+                <span class="sensor-value">--L</span>
+            </div>
+            <div class="chart-box"><canvas></canvas></div>
+            <div class="sensor-stats"></div>
+        </div>
+    </div>
+
+    <details class="raw-data">
+        <summary>查看原始数据表</summary>
+        <div class="table-wrapper">
+            <table id="history-table">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>温度</th>
+                        <th>湿度</th>
+                        <th>土壤%</th>
+                        <th>土温</th>
+                        <th>光照</th>
+                        <th>CO2</th>
+                        <th>气压</th>
+                        <th>流量</th>
+                        <th>累计</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </details>
+</div>
+{% endblock %}
+{% block script %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+const charts = {};
+
+const sensorDefs = [
+    { field: 'temperature', label: '空气温度', unit: '°C', color: '#e74c3c' },
+    { field: 'humidity',    label: '空气湿度', unit: '%',  color: '#3498db' },
+    { field: 'soil_moisture', label: '土壤湿度', unit: '%', color: '#8d6e63' },
+    { field: 'soil_temp',   label: '土壤温度', unit: '°C', color: '#e67e22' },
+    { field: 'light',       label: '光照强度', unit: 'lux', color: '#f39c12' },
+    { field: 'co2',         label: 'CO2浓度', unit: 'ppm', color: '#27ae60' },
+    { field: 'pressure',    label: '大气压强', unit: 'hPa', color: '#9b59b6' },
+    { field: 'flow_rate',   label: '水流速率', unit: 'L/min', color: '#00bcd4' },
+    { field: 'total_volume', label: '累计水量', unit: 'L', color: '#1565c0', fill: true },
+];
+
+function calcStats(arr) {
+    const filtered = arr.filter(v => v !== 0);
+    if (filtered.length === 0) return { min: 0, max: 0, avg: 0, current: 0 };
+    const min = Math.min(...filtered);
+    const max = Math.max(...filtered);
+    const avg = filtered.reduce((a, b) => a + b, 0) / filtered.length;
+    return { min, max, avg, current: arr[arr.length - 1] };
+}
+
+function createChart(card, s, labels, values) {
+    const canvas = card.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (charts[s.field]) charts[s.field].destroy();
+
+    const stats = calcStats(values);
+
+    // 更新当前值
+    card.querySelector('.sensor-value').textContent =
+        stats.current.toFixed(1) + s.unit;
+
+    // 更新统计
+    card.querySelector('.sensor-stats').innerHTML =
+        `<span>最小: ${stats.min.toFixed(1)}${s.unit}</span>` +
+        `<span>最大: ${stats.max.toFixed(1)}${s.unit}</span>` +
+        `<span>平均: ${stats.avg.toFixed(1)}${s.unit}</span>`;
+
+    charts[s.field] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                borderColor: s.color,
+                backgroundColor: s.fill
+                    ? s.color + '33'
+                    : 'transparent',
+                fill: s.fill ? true : false,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHitRadius: 10,
+                tension: 0.3,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: (ctx) => ctx.parsed.y.toFixed(1) + s.unit
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    ticks: {
+                        maxTicksLimit: 5,
+                        font: { size: 10 },
+                        color: '#95a5a6'
+                    },
+                    grid: { display: false }
+                },
+                y: {
+                    display: true,
+                    ticks: {
+                        maxTicksLimit: 4,
+                        font: { size: 10 },
+                        color: '#95a5a6'
+                    },
+                    grid: { color: '#f0f0f0' }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+}
+
+function loadHistory(hours) {
+    fetch('/api/history?hours=' + hours)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.length) return;
+
+            const labels = data.map(d => {
+                const t = new Date(d.timestamp * 1000);
+                return t.getHours().toString().padStart(2, '0') + ':' +
+                       t.getMinutes().toString().padStart(2, '0');
+            });
+
+            const cards = document.querySelectorAll('.sensor-card');
+            cards.forEach(card => {
+                const field = card.dataset.field;
+                const s = sensorDefs.find(d => d.field === field);
+                const values = data.map(d => d[field] || 0);
+                createChart(card, s, labels, values);
+            });
+
+            // 原始数据表
+            const tbody = document.querySelector('#history-table tbody');
+            tbody.innerHTML = '';
+            data.forEach(d => {
+                const time = new Date(d.timestamp * 1000).toLocaleString();
+                const tr = document.createElement('tr');
+                tr.innerHTML =
+                    `<td>${time}</td>` +
+                    `<td>${d.temperature}</td>` +
+                    `<td>${d.humidity}</td>` +
+                    `<td>${d.soil_moisture}</td>` +
+                    `<td>${d.soil_temp}</td>` +
+                    `<td>${d.light}</td>` +
+                    `<td>${d.co2}</td>` +
+                    `<td>${d.pressure}</td>` +
+                    `<td>${d.flow_rate}</td>` +
+                    `<td>${d.total_volume}</td>`;
+                tbody.appendChild(tr);
+            });
+        });
+}
+
+// 时间按钮切换
+document.querySelectorAll('.time-tabs button').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.time-tabs button').forEach(b =>
+            b.classList.remove('active'));
+        this.classList.add('active');
+        loadHistory(this.dataset.hours);
+    });
+});
+
+// 初始加载
+loadHistory(1);
+</script>
+{% endblock %}

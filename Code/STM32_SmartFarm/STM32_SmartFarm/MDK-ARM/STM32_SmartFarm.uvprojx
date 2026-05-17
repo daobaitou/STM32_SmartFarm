@@ -1045,6 +1045,11 @@
               <FileType>1</FileType>
               <FilePath>..\App\Control\fan_control.c</FilePath>
             </File>
+            <File>
+              <FileName>power_detect.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\App\Control\power_detect.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

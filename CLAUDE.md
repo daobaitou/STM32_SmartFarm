@@ -240,15 +240,15 @@ xMutex_I2C                    → LCD + Sensor共享I2C保护
 - [x] 风扇控制（PA4, TB6612驱动，自动温度触发）
 - [x] 舵机窗户控制（PA7, TIM3 PWM 50Hz，自动湿度触发）
 - [x] W25Q Flash配置存储
-- [x] UART Bridge协议（STM32↔ESP8266）
+- [x] 断电检测（LM393比较器 + PA5双沿EXTI中断）
+- [x] Flask Web端开发（仪表盘+历史曲线+远程控制）
+- [x] 腾讯云部署（Gunicorn+Nginx+SQLite+systemd，124.223.5.91）
 
 ### 进行中
 - [ ] 系统稳定性联调测试
 
 ### 待开始
 - [ ] QT上位机开发
-- [ ] Flask Web端开发
-- [ ] 云服务器部署
 - [ ] 论文撰写
 
 ---
@@ -257,7 +257,7 @@ xMutex_I2C                    → LCD + Sensor共享I2C保护
 > 注：以下功能来自技术方案扩展，开题报告核心功能完成后视情况实现
 
 - 天气API联动（和风天气）
-- Web端部署至腾讯云
+- Web端部署至腾讯云 ✅
 - 断电参数恢复（STM32 Flash存储）
 - 数据导出CSV/报表生成
 - 多用户认证系统

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}实时监控{% endblock %}
+{% block content %}
+<div class="dashboard">
+    <div class="card">
+        <span class="label">温度</span>
+        <span class="value" id="temperature">{{ data.temperature }}°C</span>
+    </div>
+    <div class="card">
+        <span class="label">湿度</span>
+        <span class="value" id="humidity">{{ data.humidity }}%</span>
+    </div>
+    <div class="card">
+        <span class="label">土壤湿度</span>
+        <span class="value" id="soil_moisture">{{ data.soil_moisture }}%</span>
+    </div>
+    <div class="card">
+        <span class="label">土壤温度</span>
+        <span class="value" id="soil_temp">{{ data.soil_temp }}°C</span>
+    </div>
+    <div class="card">
+        <span class="label">光照</span>
+        <span class="value" id="light">{{ data.light }}lux</span>
+    </div>
+    <div class="card">
+        <span class="label">气压</span>
+        <span class="value" id="pressure">{{ data.pressure }}hPa</span>
+    </div>
+    <div class="card">
+        <span class="label">CO2</span>
+        <span class="value" id="co2">{{ data.co2 }}ppm</span>
+    </div>
+    <div class="card">
+        <span class="label">水流速率</span>
+        <span class="value" id="flow_rate">{{ data.flow_rate }}L/min</span>
+    </div>
+    <div class="card">
+        <span class="label">累计水量</span>
+        <span class="value" id="total_volume">{{ data.total_volume }}L</span>
+    </div>
+</div>
+{% endblock %}
+{% block script %}
+<script>
+setInterval(() => {
+    fetch('/api/latest')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('temperature').textContent = d.temperature + '°C';
+            document.getElementById('humidity').textContent = d.humidity + '%';
+            document.getElementById('soil_moisture').textContent = d.soil_moisture + '%';
+            document.getElementById('soil_temp').textContent = d.soil_temp + '°C';
+            document.getElementById('light').textContent = d.light + 'lux';
+            document.getElementById('pressure').textContent = d.pressure + 'hPa';
+            document.getElementById('co2').textContent = d.co2 + 'ppm';
+            document.getElementById('flow_rate').textContent = d.flow_rate + 'L/min';
+            document.getElementById('total_volume').textContent = d.total_volume.toFixed(1) + 'L';
+            document.getElementById('update-time').textContent = d.update_time;
+        });
+}, 2000);
+</script>
+{% endblock %}

@@ -2,7 +2,7 @@
  * @file    sensor_fc28.c
  * @author  王国维
  * @date    2026-04-19
- * @brief   FC28土壤湿度传感器驱动 - ADC单次转换
+ * @brief   FC28土壤湿度传感器驱动 - ADC多次采样取平均
  */
 
 #include "sensor_fc28.h"
@@ -21,19 +21,29 @@ HAL_StatusTypeDef FC28_Read(FC28_Data_t *data)
 {
     memset(data, 0, sizeof(FC28_Data_t));
 
-    HAL_ADC_Start(&hadc1);
+    /* 多次采样取平均，提高稳定性 */
+    uint32_t adc_sum = 0;
+    uint8_t samples = 5;
+    uint8_t valid_samples = 0;
 
-    if (HAL_ADC_PollForConversion(&hadc1, 100) != HAL_OK)
+    for (uint8_t i = 0; i < samples; i++)
     {
+        HAL_ADC_Start(&hadc1);
+        if (HAL_ADC_PollForConversion(&hadc1, 100) == HAL_OK)
+        {
+            adc_sum += HAL_ADC_GetValue(&hadc1);
+            valid_samples++;
+        }
         HAL_ADC_Stop(&hadc1);
-        return HAL_ERROR;
     }
 
-    data->adc_value = HAL_ADC_GetValue(&hadc1);
-    HAL_ADC_Stop(&hadc1);
+    if (valid_samples == 0)
+        return HAL_ERROR;
+
+    data->adc_value = (uint16_t)(adc_sum / valid_samples);
 
     /* ADC值转湿度百分比：干燥(高ADC)~0%, 潮湿(低ADC)~100% */
-    /* FC28在空气中~3500, 水中~1200, 根据实际校准 */
+    /* FC28校准值：空气中~3500, 水中~1200 */
     if (data->adc_value > 3500)
         data->moisture = 0;
     else if (data->adc_value < 1200)

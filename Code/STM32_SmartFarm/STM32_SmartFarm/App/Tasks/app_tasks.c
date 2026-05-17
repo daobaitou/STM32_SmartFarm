@@ -63,17 +63,16 @@ void vTask_Sensor(void *pvParameters)
     SensorData_t data;
     memset(&data, 0, sizeof(data));
     TickType_t xLastWakeTime = xTaskGetTickCount();
+    uint8_t cycle = 0;
 
     for (;;)
     {
         printf("[Sensor] Reading...\r\n");
         DHT22_Data_t dht;
-        DS18B20_Data_t ds;
         FC28_Data_t fc;
-        BMP180_Data_t bmp;
-        BH1750_Data_t light;
         YFS201_Data_t flow;
 
+        /* 每个周期都读：DHT22(温湿度影响风扇/窗户/灌溉控制) + FC28(土壤湿度影响灌溉) */
         if (DHT22_Read(&dht) == HAL_OK && dht.valid)
         {
             data.temperature = dht.temperature;
@@ -87,57 +86,62 @@ void vTask_Sensor(void *pvParameters)
             printf("[Sensor] DHT22 failed\r\n");
         }
 
-        if (DS18B20_Read(&ds) == HAL_OK && ds.valid)
-        {
-            data.soil_temp = ds.temperature;
-            printf("[Sensor] DS18B20: %.1fC\r\n", ds.temperature);
-        }
-
         if (FC28_Read(&fc) == HAL_OK && fc.valid)
         {
             data.soil_moisture = fc.moisture;
             data.adc_raw = fc.adc_value;
             last_soil = fc.moisture;
-            printf("[Sensor] FC28: %u%%\r\n", fc.moisture);
-        }
-
-        if (BMP180_Read(&bmp) == HAL_OK && bmp.valid)
-        {
-            data.pressure = bmp.pressure;
-            data.bmp_temp = bmp.temperature;
-            printf("[Sensor] BMP180: %.0fhPa\r\n", bmp.pressure);
-        }
-
-        if (BH1750_Read(&light) == HAL_OK && light.valid)
-        {
-            data.light = light.light;
-            printf("[Sensor] BH1750: %.0flux\r\n", light.light);
+            printf("[Sensor] FC28: %u%% ADC:%u\r\n", fc.moisture, fc.adc_value);
         }
 
         if (YFS201_Read(&flow) == HAL_OK && flow.valid)
         {
             data.flow_rate = flow.flow_rate;
             data.total_volume = flow.total_volume;
-            printf("[Sensor] YFS201: %.2fL/min, Total:%.2fL, Pulses:%lu\r\n", flow.flow_rate, flow.total_volume, flow.pulse_count);
-        }
-        else
-        {
-            printf("[Sensor] YFS201: no flow\r\n");
+            printf("[Sensor] YFS201: %.2fL/min Total:%.2fL\r\n", flow.flow_rate, flow.total_volume);
         }
 
-        /* MH-Z19B 每6秒读一次（每3个周期） */
+        /* 每2个周期(6s)读：DS18B20 + BH1750 (变化较慢) */
+        if (cycle % 2 == 0)
         {
-            static uint8_t co2_cycle = 0;
-            co2_cycle++;
-            if (co2_cycle >= 3) {
-                co2_cycle = 0;
-                MHZ19B_Data_t mhz;
-                if (MHZ19B_Read(&mhz) == HAL_OK && mhz.valid) {
-                    data.co2 = mhz.co2;
-                    printf("[Sensor] MHZ19B: CO2=%uppm\r\n", mhz.co2);
-                }
+            DS18B20_Data_t ds;
+            if (DS18B20_Read(&ds) == HAL_OK && ds.valid)
+            {
+                data.soil_temp = ds.temperature;
+                printf("[Sensor] DS18B20: %.1fC\r\n", ds.temperature);
+            }
+
+            BH1750_Data_t light;
+            if (BH1750_Read(&light) == HAL_OK && light.valid)
+            {
+                data.light = light.light;
+                printf("[Sensor] BH1750: %.0flux\r\n", light.light);
             }
         }
+
+        /* 每6个周期(18s)读：BMP180 (大气压变化很慢) */
+        if (cycle % 6 == 3)
+        {
+            BMP180_Data_t bmp;
+            if (BMP180_Read(&bmp) == HAL_OK && bmp.valid)
+            {
+                data.pressure = bmp.pressure;
+                data.bmp_temp = bmp.temperature;
+                printf("[Sensor] BMP180: %.0fhPa\r\n", bmp.pressure);
+            }
+        }
+
+        /* 每10个周期(30s)读：MH-Z19B (CO2变化慢，预热3分钟) */
+        if (cycle % 10 == 5)
+        {
+            MHZ19B_Data_t mhz;
+            if (MHZ19B_Read(&mhz) == HAL_OK && mhz.valid) {
+                data.co2 = mhz.co2;
+                printf("[Sensor] MHZ19B: CO2=%uppm\r\n", mhz.co2);
+            }
+        }
+
+        cycle++;
 
         data.timestamp = xTaskGetTickCount();
 
@@ -147,10 +151,9 @@ void vTask_Sensor(void *pvParameters)
             xQueueSend(xQueue_SensorData, &data, 0);
             xQueueSend(xQueue_SensorData, &data, 0);
             xQueueSend(xQueue_SensorData, &data, 0);
-            printf("[Sensor] Data sent to queue\r\n");
         }
 
-        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(2000));
+        vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(3000));
     }
 }
 
