@@ -145,10 +145,15 @@ def mqtt_start():
         mqtt_start()
 
 def mqtt_publish(topic, message):
-    """发布控制命令"""
-    if mqtt_client:
-        mqtt_client.publish(topic, message, qos=1)
+    """发布控制命令（用临时客户端，避免gunicorn fork问题）"""
+    try:
+        pub = mqtt.Client(client_id="smartfarm_pub_" + str(int(time.time()*1000)))
+        pub.connect(config.MQTT_BROKER, config.MQTT_PORT, 60)
+        pub.publish(topic, message, qos=1)
+        pub.disconnect()
         print(f"[MQTT] Publish: {topic} → {message}")
+    except Exception as e:
+        print(f"[MQTT] Publish failed: {e}")
 
 # ── Web 路由 ─────────────────────────────────────────────────
 

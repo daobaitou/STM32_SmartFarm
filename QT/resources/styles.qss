@@ -1,0 +1,44 @@
+QMainWindow {
+    background-color: #f5f6fa;
+}
+QGroupBox {
+    font-weight: bold;
+    border: 1px solid #dcdde1;
+    border-radius: 6px;
+    margin-top: 8px;
+    padding-top: 16px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 12px;
+    padding: 0 6px;
+}
+QPushButton {
+    background-color: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 20px;
+    font-size: 13px;
+}
+QPushButton:hover {
+    background-color: #34495e;
+}
+QPushButton:pressed {
+    background-color: #1a252f;
+}
+QPushButton:checked {
+    background-color: #27ae60;
+}
+QPushButton[btnType="off"] {
+    background-color: #e74c3c;
+}
+QStatusBar {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    font-size: 12px;
+}
+QLabel#statusLabel {
+    color: #27ae60;
+    font-weight: bold;
+}
