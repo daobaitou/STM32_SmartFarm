@@ -408,12 +408,12 @@ void vTask_Irrigation(void *pvParameters)
             switch (cmd.type) {
             case CTRL_MODE_AUTO:    irrigation_mode = 0; break;
             case CTRL_MODE_MANUAL:  irrigation_mode = 1; break;
-            case CTRL_PUMP_ON:      Pump_On(); pump_on = 1; break;
-            case CTRL_PUMP_OFF:     Pump_Off(); pump_on = 0; break;
-            case CTRL_FAN_ON:       Fan_On(); fan_on = 1; break;
-            case CTRL_FAN_OFF:      Fan_Off(); fan_on = 0; break;
-            case CTRL_WINDOW_OPEN:  Servo_Open(); window_open = 1; break;
-            case CTRL_WINDOW_CLOSE: Servo_Close(); window_open = 0; break;
+            case CTRL_PUMP_ON:      irrigation_mode = 1; Pump_On(); pump_on = 1; break;
+            case CTRL_PUMP_OFF:     irrigation_mode = 1; Pump_Off(); pump_on = 0; break;
+            case CTRL_FAN_ON:       irrigation_mode = 1; Fan_On(); fan_on = 1; break;
+            case CTRL_FAN_OFF:      irrigation_mode = 1; Fan_Off(); fan_on = 0; break;
+            case CTRL_WINDOW_OPEN:  irrigation_mode = 1; Servo_Open(); window_open = 1; break;
+            case CTRL_WINDOW_CLOSE: irrigation_mode = 1; Servo_Close(); window_open = 0; break;
             case CTRL_SET_THRESHOLD:
                 threshold_low = cmd.params.threshold.low;
                 threshold_high = cmd.params.threshold.high;

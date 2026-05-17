@@ -3,24 +3,24 @@
 {% block content %}
 <div class="control">
     <div class="control-group">
-        <h3>灌溉模式</h3>
-        <button class="btn" onclick="sendCmd('mode', 'AUTO')">自动</button>
-        <button class="btn" onclick="sendCmd('mode', 'MANUAL')">手动</button>
+        <h3>灌溉模式 <span id="modeIndicator" style="color:#27ae60;font-size:14px;"></span></h3>
+        <button class="btn" onclick="setMode('AUTO')">自动</button>
+        <button class="btn" onclick="setMode('MANUAL')">手动</button>
     </div>
     <div class="control-group">
         <h3>水泵</h3>
-        <button class="btn on" onclick="sendCmd('pump', 'ON')">开启</button>
-        <button class="btn off" onclick="sendCmd('pump', 'OFF')">关闭</button>
+        <button class="btn on" onclick="controlDevice('pump', 'ON')">开启</button>
+        <button class="btn off" onclick="controlDevice('pump', 'OFF')">关闭</button>
     </div>
     <div class="control-group">
         <h3>风扇</h3>
-        <button class="btn on" onclick="sendCmd('fan', 'ON')">开启</button>
-        <button class="btn off" onclick="sendCmd('fan', 'OFF')">关闭</button>
+        <button class="btn on" onclick="controlDevice('fan', 'ON')">开启</button>
+        <button class="btn off" onclick="controlDevice('fan', 'OFF')">关闭</button>
     </div>
     <div class="control-group">
         <h3>窗户</h3>
-        <button class="btn on" onclick="sendCmd('window', 'OPEN')">打开</button>
-        <button class="btn off" onclick="sendCmd('window', 'CLOSE')">关闭</button>
+        <button class="btn on" onclick="controlDevice('window', 'OPEN')">打开</button>
+        <button class="btn off" onclick="controlDevice('window', 'CLOSE')">关闭</button>
     </div>
     <div class="control-group">
         <h3>阈值设置</h3>
@@ -33,17 +33,41 @@
 {% endblock %}
 {% block script %}
 <script>
-function sendCmd(device, value) {
-    fetch('/api/control/' + device, {
+// 切换模式（自动/手动）
+function setMode(mode) {
+    fetch('/api/control/mode', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({value: value})
+        body: JSON.stringify({value: mode})
     })
     .then(r => r.json())
     .then(d => {
-        document.getElementById('status').textContent = '已发送: ' + d.message;
+        var label = mode === 'AUTO' ? '自动模式' : '手动模式';
+        document.getElementById('status').textContent = '已切换: ' + label;
+        document.getElementById('modeIndicator').textContent = '(当前: ' + label + ')';
     });
 }
+
+// 控制设备（水泵/风扇/窗户），自动先切手动模式防止自动逻辑覆盖
+function controlDevice(device, value) {
+    fetch('/api/control/mode', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({value: 'MANUAL'})
+    }).then(() => {
+        return fetch('/api/control/' + device, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({value: value})
+        });
+    })
+    .then(r => r.json())
+    .then(d => {
+        document.getElementById('status').textContent = '已发送: ' + d.message + ' (手动模式)';
+        document.getElementById('modeIndicator').textContent = '(当前: 手动模式)';
+    });
+}
+
 function setThreshold() {
     const low = document.getElementById('low').value;
     const high = document.getElementById('high').value;

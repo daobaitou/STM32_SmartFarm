@@ -73,23 +73,32 @@ void ControlPanel::onModeManual()
 
 void ControlPanel::onPumpToggle()
 {
+    m_api->sendControl("mode", "MANUAL");
     bool on = m_btnPump->isChecked();
     m_api->sendControl("pump", on ? "ON" : "OFF");
     m_btnPump->setText(on ? "水泵 ON" : "水泵 OFF");
+    m_btnManual->setChecked(true);
+    m_btnAuto->setChecked(false);
 }
 
 void ControlPanel::onFanToggle()
 {
+    m_api->sendControl("mode", "MANUAL");
     bool on = m_btnFan->isChecked();
     m_api->sendControl("fan", on ? "ON" : "OFF");
     m_btnFan->setText(on ? "风扇 ON" : "风扇 OFF");
+    m_btnManual->setChecked(true);
+    m_btnAuto->setChecked(false);
 }
 
 void ControlPanel::onWindowToggle()
 {
+    m_api->sendControl("mode", "MANUAL");
     bool open = m_btnWindow->isChecked();
     m_api->sendControl("window", open ? "OPEN" : "CLOSE");
     m_btnWindow->setText(open ? "窗户 OPEN" : "窗户 CLOSE");
+    m_btnManual->setChecked(true);
+    m_btnAuto->setChecked(false);
 }
 
 void ControlPanel::onThresholdSet()
