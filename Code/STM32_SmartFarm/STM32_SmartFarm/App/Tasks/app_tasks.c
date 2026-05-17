@@ -270,14 +270,27 @@ void vTask_UART_TX(void *pvParameters)
 
 void vTask_UART_RX(void *pvParameters)
 {
-    printf("[UART_RX] Task started\r\n");
+    const char *startmsg = "[UART_RX] Task started @9600\r\n";
+    while (*startmsg) {
+        while(!(USART1->SR & USART_SR_TXE));
+        USART1->DR = *startmsg++;
+    }
+
     BridgeCmd_t cmd;
+    static const char *cmd_names[] = {
+        "MODE_AUTO", "MODE_MANUAL", "PUMP_ON", "PUMP_OFF",
+        "SET_THRESH", "FAN_ON", "FAN_OFF", "WDOW_OPEN", "WDOW_CLOSE", "UNKNOWN"
+    };
 
     for (;;)
     {
         if (UART_Bridge_CheckCommand(&cmd))
         {
-            printf("[UART_RX] Cmd: %d\r\n", cmd.type);
+            /* 轻量输出，不用printf */
+            debug_print("[UART_RX] ");
+            if (cmd.type <= CMD_UNKNOWN)
+                debug_print(cmd_names[cmd.type]);
+            debug_print("\r\n");
 
             ControlCmd_t ctrl;
             switch (cmd.type)
@@ -405,19 +418,28 @@ void vTask_Irrigation(void *pvParameters)
         if (xQueue_ControlCmd &&
             xQueueReceive(xQueue_ControlCmd, &cmd, pdMS_TO_TICKS(100)) == pdPASS)
         {
+            debug_print("[MQTT] Executing command\r\n");
             switch (cmd.type) {
-            case CTRL_MODE_AUTO:    irrigation_mode = 0; break;
-            case CTRL_MODE_MANUAL:  irrigation_mode = 1; break;
-            case CTRL_PUMP_ON:      irrigation_mode = 1; Pump_On(); pump_on = 1; break;
-            case CTRL_PUMP_OFF:     irrigation_mode = 1; Pump_Off(); pump_on = 0; break;
-            case CTRL_FAN_ON:       irrigation_mode = 1; Fan_On(); fan_on = 1; break;
-            case CTRL_FAN_OFF:      irrigation_mode = 1; Fan_Off(); fan_on = 0; break;
-            case CTRL_WINDOW_OPEN:  irrigation_mode = 1; Servo_Open(); window_open = 1; break;
-            case CTRL_WINDOW_CLOSE: irrigation_mode = 1; Servo_Close(); window_open = 0; break;
+            case CTRL_MODE_AUTO:    irrigation_mode = 0;
+                debug_print("[MQTT] Mode=AUTO\r\n"); break;
+            case CTRL_MODE_MANUAL:  irrigation_mode = 1;
+                debug_print("[MQTT] Mode=MANUAL\r\n"); break;
+            case CTRL_PUMP_ON:      irrigation_mode = 1; Pump_On(); pump_on = 1;
+                debug_print("[MQTT] Pump=ON\r\n"); break;
+            case CTRL_PUMP_OFF:     irrigation_mode = 1; Pump_Off(); pump_on = 0;
+                debug_print("[MQTT] Pump=OFF\r\n"); break;
+            case CTRL_FAN_ON:       irrigation_mode = 1; Fan_On(); fan_on = 1;
+                debug_print("[MQTT] Fan=ON\r\n"); break;
+            case CTRL_FAN_OFF:      irrigation_mode = 1; Fan_Off(); fan_on = 0;
+                debug_print("[MQTT] Fan=OFF\r\n"); break;
+            case CTRL_WINDOW_OPEN:  irrigation_mode = 1; Servo_Open(); window_open = 1;
+                debug_print("[MQTT] Window=OPEN\r\n"); break;
+            case CTRL_WINDOW_CLOSE: irrigation_mode = 1; Servo_Close(); window_open = 0;
+                debug_print("[MQTT] Window=CLOSE\r\n"); break;
             case CTRL_SET_THRESHOLD:
                 threshold_low = cmd.params.threshold.low;
                 threshold_high = cmd.params.threshold.high;
-                break;
+                debug_print("[MQTT] Threshold set\r\n"); break;
             default: break;
             }
         }
