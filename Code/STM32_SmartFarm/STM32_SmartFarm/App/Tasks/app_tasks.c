@@ -55,6 +55,15 @@ static volatile float last_humidity = 0;
 /* 电源状态 */
 static uint8_t power_backup = 0;
 
+/* 轻量串口输出，不用printf（ARMCC printf栈消耗过大导致Irrigation任务崩溃） */
+static void debug_print(const char *s)
+{
+    while (*s) {
+        while(!(USART1->SR & USART_SR_TXE));
+        USART1->DR = *s++;
+    }
+}
+
 /*-----------------------------------------------------------*/
 
 void vTask_Sensor(void *pvParameters)
@@ -338,15 +347,6 @@ static uint8_t button_debounce(GPIO_TypeDef *port, uint16_t pin, uint8_t idx)
         return 1;
     }
     return 0;
-}
-
-/* 轻量串口输出，不用printf（ARMCC printf栈消耗过大导致Irrigation任务崩溃） */
-static void debug_print(const char *s)
-{
-    while (*s) {
-        while(!(USART1->SR & USART_SR_TXE));
-        USART1->DR = *s++;
-    }
 }
 
 void vTask_Irrigation(void *pvParameters)
