@@ -18,8 +18,8 @@
 #define TOPIC_CTRL_FAN    "smartfarm/farm_001/control/fan"
 #define TOPIC_CTRL_WINDOW "smartfarm/farm_001/control/window"
 
-/* UART to STM32 (SoftwareSerial) - 9600更可靠 */
-#define UART_BAUD     9600
+/* UART to STM32 (SoftwareSerial) */
+#define UART_BAUD     115200
 #define UART_RX_PIN   15   // D8 = GPIO15
 #define UART_TX_PIN   13   // D7 = GPIO13
 
