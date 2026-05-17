@@ -1,7 +1,7 @@
 /**
  * @file    uart_bridge.h
  * @author  王国维
- * @date    2026-05-17
+ * @date    2026-05-12
  * @brief   UART协议网桥 - STM32与ESP8266的简单文本协议通信
  * @note    STM32发送 SNS:{json}\n，ESP8266回复 ACK:SNS\n
  *          ESP8266发送 CMD:xxx\n，STM32解析为控制命令
@@ -38,5 +38,6 @@ typedef struct {
 void UART_Bridge_Init(void);
 void UART_Bridge_SendSensorData(const SensorData_t *data);
 uint8_t UART_Bridge_CheckCommand(BridgeCmd_t *cmd);
+uint16_t UART_Bridge_GetRxCount(void);
 
 #endif

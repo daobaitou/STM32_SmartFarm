@@ -279,27 +279,15 @@ void vTask_UART_TX(void *pvParameters)
 
 void vTask_UART_RX(void *pvParameters)
 {
-    const char *startmsg = "[UART_RX] Task started @9600\r\n";
-    while (*startmsg) {
-        while(!(USART1->SR & USART_SR_TXE));
-        USART1->DR = *startmsg++;
-    }
-
+    printf("[UART_RX] Task started @115200\r\n");
     BridgeCmd_t cmd;
-    static const char *cmd_names[] = {
-        "MODE_AUTO", "MODE_MANUAL", "PUMP_ON", "PUMP_OFF",
-        "SET_THRESH", "FAN_ON", "FAN_OFF", "WDOW_OPEN", "WDOW_CLOSE", "UNKNOWN"
-    };
+    uint32_t last_dbg_time = 0;
 
     for (;;)
     {
         if (UART_Bridge_CheckCommand(&cmd))
         {
-            /* 轻量输出，不用printf */
-            debug_print("[UART_RX] ");
-            if (cmd.type <= CMD_UNKNOWN)
-                debug_print(cmd_names[cmd.type]);
-            debug_print("\r\n");
+            printf("[UART_RX] Cmd received: %d\r\n", cmd.type);
 
             ControlCmd_t ctrl;
             switch (cmd.type)
@@ -311,7 +299,7 @@ void vTask_UART_RX(void *pvParameters)
             case CMD_FAN_ON:       ctrl.type = CTRL_FAN_ON; break;
             case CMD_FAN_OFF:      ctrl.type = CTRL_FAN_OFF; break;
             case CMD_WINDOW_OPEN:  ctrl.type = CTRL_WINDOW_OPEN; break;
-            case CMD_WINDOW_CLOSE: ctrl.type = CTRL_WINDOW_CLOSE; break;
+            case CMD_WINDOW_CLOSE:  ctrl.type = CTRL_WINDOW_CLOSE; break;
             case CMD_SET_THRESHOLD:
                 ctrl.type = CTRL_SET_THRESHOLD;
                 ctrl.params.threshold.low = cmd.params.threshold.low;
@@ -323,6 +311,16 @@ void vTask_UART_RX(void *pvParameters)
             if (xQueue_ControlCmd)
                 xQueueSend(xQueue_ControlCmd, &ctrl, 0);
         }
+
+        /* 每5秒打印接收字节计数 */
+        uint32_t now = xTaskGetTickCount();
+        if (now - last_dbg_time > pdMS_TO_TICKS(5000))
+        {
+            last_dbg_time = now;
+            uint16_t rx_cnt = UART_Bridge_GetRxCount();
+            printf("[UART_RX] Bytes received: %u\r\n", rx_cnt);
+        }
+
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
@@ -516,7 +514,7 @@ void FreeRTOS_Init(void)
     ret = xTaskCreate(vTask_UART_TX,    "UART_TX",    512, NULL, PRIORITY_UART_TX,     NULL);
     printf("[RTOS] UART_TX: %s (free=%u)\r\n", ret==pdPASS?"OK":"FAIL", (unsigned int)xPortGetFreeHeapSize());
 
-    ret = xTaskCreate(vTask_UART_RX,    "UART_RX",    128, NULL, PRIORITY_UART_RX,     NULL);
+    ret = xTaskCreate(vTask_UART_RX,    "UART_RX",    256, NULL, PRIORITY_UART_RX,     NULL);
     printf("[RTOS] UART_RX: %s (free=%u)\r\n", ret==pdPASS?"OK":"FAIL", (unsigned int)xPortGetFreeHeapSize());
 
     printf("[RTOS] All tasks created, starting scheduler...\r\n");

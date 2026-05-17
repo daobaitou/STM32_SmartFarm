@@ -1,10 +1,8 @@
 /**
  * @file    uart_bridge.c
  * @author  王国维
- * @date    2026-05-17
- * @brief   UART协议网桥 - 简化版(无校验，避免栈溢出)
- * @note    STM32发送 SNS:{json}\n，ESP8266发布到MQTT
- *          ESP8266发送 CMD:xxx\n，STM32解析为控制命令
+ * @date    2026-05-12
+ * @brief   UART协议网桥实现 - STM32与ESP8266简单文本协议
  */
 
 #include "uart_bridge.h"
@@ -15,15 +13,18 @@
 static char cmd_buf[64];
 static uint8_t cmd_idx = 0;
 
+/* 调试用：统计接收到的字节数 */
+static uint16_t rx_byte_count = 0;
+
 void UART_Bridge_Init(void)
 {
     USART2_Flush();
     cmd_idx = 0;
+    rx_byte_count = 0;
 }
 
 void UART_Bridge_SendSensorData(const SensorData_t *data)
 {
-    /* 单buffer格式化发送 */
     char buf[160];
     int len = snprintf(buf, sizeof(buf),
         "SNS:{\"t\":%.1f,\"h\":%.1f,\"sm\":%u,\"st\":%.1f,\"l\":%.0f,\"p\":%.1f,\"c\":%u,\"f\":%.2f,\"v\":%.2f}\n",
@@ -41,30 +42,22 @@ uint8_t UART_Bridge_CheckCommand(BridgeCmd_t *cmd)
     uint8_t ch;
     while (USART2_ReadByte(&ch) && cmd_idx < sizeof(cmd_buf) - 1)
     {
+        rx_byte_count++;
+
         if (ch == '\n')
         {
             cmd_buf[cmd_idx] = '\0';
-            cmd_idx = 0;
 
-            /* 简单格式: CMD:MODE:AUTO 等 */
             if (strncmp(cmd_buf, "CMD:MODE:", 9) == 0)
             {
                 cmd->type = (strstr(cmd_buf + 9, "AUTO")) ? CMD_MODE_AUTO : CMD_MODE_MANUAL;
+                cmd_idx = 0;
                 return 1;
             }
             else if (strncmp(cmd_buf, "CMD:PUMP:", 9) == 0)
             {
                 cmd->type = (strstr(cmd_buf + 9, "ON")) ? CMD_PUMP_ON : CMD_PUMP_OFF;
-                return 1;
-            }
-            else if (strncmp(cmd_buf, "CMD:FAN:", 8) == 0)
-            {
-                cmd->type = (strstr(cmd_buf + 8, "ON")) ? CMD_FAN_ON : CMD_FAN_OFF;
-                return 1;
-            }
-            else if (strncmp(cmd_buf, "CMD:WDOW:", 9) == 0)
-            {
-                cmd->type = (strstr(cmd_buf + 9, "OPEN")) ? CMD_WINDOW_OPEN : CMD_WINDOW_CLOSE;
+                cmd_idx = 0;
                 return 1;
             }
             else if (strncmp(cmd_buf, "CMD:THRESH:", 11) == 0)
@@ -74,8 +67,23 @@ uint8_t UART_Bridge_CheckCommand(BridgeCmd_t *cmd)
                 sscanf(cmd_buf + 11, "%d:%d", &low, &high);
                 cmd->params.threshold.low = (uint8_t)low;
                 cmd->params.threshold.high = (uint8_t)high;
+                cmd_idx = 0;
                 return 1;
             }
+            else if (strncmp(cmd_buf, "CMD:FAN:", 8) == 0)
+            {
+                cmd->type = (strstr(cmd_buf + 8, "ON")) ? CMD_FAN_ON : CMD_FAN_OFF;
+                cmd_idx = 0;
+                return 1;
+            }
+            else if (strncmp(cmd_buf, "CMD:WDOW:", 9) == 0)
+            {
+                cmd->type = (strstr(cmd_buf + 9, "OPEN")) ? CMD_WINDOW_OPEN : CMD_WINDOW_CLOSE;
+                cmd_idx = 0;
+                return 1;
+            }
+            /* ACK/NACK/ERR 忽略 */
+            cmd_idx = 0;
         }
         else if (ch != '\r')
         {
@@ -83,4 +91,10 @@ uint8_t UART_Bridge_CheckCommand(BridgeCmd_t *cmd)
         }
     }
     return 0;
+}
+
+/* 获取接收字节计数(调试用) */
+uint16_t UART_Bridge_GetRxCount(void)
+{
+    return rx_byte_count;
 }

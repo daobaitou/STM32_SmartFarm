@@ -1,8 +1,8 @@
 /**
  * @file    ESP8266_MQTT_Bridge.ino
  * @author  王国维
- * @date    2026-05-17
- * @brief   ESP8266 MQTT网桥 v2.1 - 简化版(115200, 无校验)
+ * @date    2026-05-12
+ * @brief   ESP8266 MQTT网桥 - 独立处理WiFi+MQTT，通过UART与STM32交换数据
  * @note    STM32发送 SNS:{json}\n，ESP8266发布到MQTT
  *          ESP8266订阅控制主题，收到命令后发送 CMD:xxx\n 给STM32
  *
@@ -23,7 +23,6 @@ PubSubClient mqtt(espClient);
 unsigned long lastReconnectAttempt = 0;
 unsigned long lastPublishTime = 0;
 uint32_t publishCount = 0;
-uint32_t cmdSentCount = 0;
 
 /* ---------- WiFi ---------- */
 void setup_wifi() {
@@ -53,7 +52,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   }
   msg.trim();
 
-  Serial.println("[MQTT] RX: " + String(topic) + " => " + msg);
+  Serial.println("[MQTT] Received: " + String(topic) + " => " + msg);
 
   String cmd = "";
 
@@ -71,6 +70,19 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       cmd = "CMD:PUMP:OFF\n";
     }
   }
+  else if (String(topic) == TOPIC_CTRL_THRESH) {
+    StaticJsonDocument<128> doc;
+    DeserializationError err = deserializeJson(doc, msg);
+    if (!err) {
+      int low = doc["low"] | doc["threshold_low"] | 30;
+      int high = doc["high"] | doc["threshold_high"] | 70;
+      cmd = "CMD:THRESH:" + String(low) + ":" + String(high) + "\n";
+    } else {
+      if (msg.indexOf(":") >= 0) {
+        cmd = "CMD:THRESH:" + msg + "\n";
+      }
+    }
+  }
   else if (String(topic) == TOPIC_CTRL_FAN) {
     if (msg.equalsIgnoreCase("ON") || msg.indexOf("on") >= 0) {
       cmd = "CMD:FAN:ON\n";
@@ -85,21 +97,10 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       cmd = "CMD:WDOW:CLOSE\n";
     }
   }
-  else if (String(topic) == TOPIC_CTRL_THRESH) {
-    StaticJsonDocument<128> doc;
-    DeserializationError err = deserializeJson(doc, msg);
-    if (!err) {
-      int low = doc["low"] | 30;
-      int high = doc["high"] | 70;
-      cmd = "CMD:THRESH:" + String(low) + ":" + String(high) + "\n";
-    }
-  }
 
   if (cmd.length() > 0) {
     stmSerial.print(cmd);
-    stmSerial.flush();
-    cmdSentCount++;
-    Serial.println("[UART] TX: " + cmd.substring(0, cmd.length()-1));
+    Serial.println("[UART] Sent to STM32: " + cmd.substring(0, cmd.length()-1));
   }
 }
 
@@ -161,27 +162,23 @@ void publish_sensor_data(const String& compactJson) {
 void handle_uart() {
   static String buffer = "";
 
-  while (stmSerial.available()) {
-    char c = (char)stmSerial.read();
+  while (stmSerial.available() || Serial.available()) {
+    char c;
+    if (stmSerial.available()) {
+      c = (char)stmSerial.read();
+    } else {
+      c = (char)Serial.read();
+    }
 
     if (c == '\n') {
       buffer.trim();
-      if (buffer.length() > 0) {
-        if (buffer.startsWith("SNS:")) {
-          String json = buffer.substring(4);
-          Serial.println("[UART] RX sensor (" + String(json.length()) + " bytes)");
-          publish_sensor_data(json);
-        }
-        else if (buffer.startsWith("ACK:") || buffer.startsWith("NACK:")) {
-          Serial.println("[UART] RX: " + buffer);
-        }
-        else {
-          Serial.println("[UART] RX unknown: " + buffer);
-        }
+      if (buffer.startsWith("SNS:")) {
+        String json = buffer.substring(4);
+        Serial.println("[UART] Received: " + json);
+        publish_sensor_data(json);
       }
       buffer = "";
-    }
-    else if (c != '\r') {
+    } else if (c != '\r') {
       buffer += c;
       if (buffer.length() > 300) {
         Serial.println("[UART] Frame too long, discarding");
@@ -195,6 +192,7 @@ void handle_uart() {
 void update_led() {
   static unsigned long lastBlink = 0;
   static bool ledState = false;
+
   unsigned long now = millis();
 
   if (!mqtt.connected()) {
@@ -215,8 +213,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
-  Serial.println("\n\n=== ESP8266 MQTT Bridge v2.1 ===");
-  Serial.println("[Init] UART @ " + String(UART_BAUD));
+  Serial.println("\n\n=== ESP8266 MQTT Bridge v1.0 ===");
+  Serial.println("[Init] UART to STM32 @ " + String(UART_BAUD));
 
   setup_wifi();
 
@@ -249,6 +247,7 @@ void loop() {
   mqtt.loop();
 
   handle_uart();
+
   update_led();
 
   unsigned long now = millis();
@@ -256,8 +255,7 @@ void loop() {
     lastPublishTime = now;
     Serial.println("[Status] WiFi:" + String(WiFi.status() == WL_CONNECTED ? "OK" : "DOWN") +
                    " MQTT:" + String(mqtt.connected() ? "OK" : "DOWN") +
-                   " Pub:" + String(publishCount) +
-                   " Cmd:" + String(cmdSentCount) +
+                   " Published:" + String(publishCount) +
                    " RSSI:" + String(WiFi.RSSI()) + "dBm");
   }
 }
